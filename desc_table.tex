@@ -1,0 +1,42 @@
+\begin{table}[ht]
+\centering
+\small
+\caption{Sample Description and Summary Statistics}
+\label{tab:descriptive}
+\vspace{0.5em}
+\textbf{Panel A: Sample Structure}
+\vspace{0.3em}
+\begin{tabular}{lrrrr}
+\toprule
+Period & Date range & Weeks & Obs. & Avg tickers/week \\
+\midrule
+Development & Feb 2014 – Dec 2015 & 96 & 13,882 & 144.6 \\
+OOS & Jan 2016 – Dec 2025 & 514 & 97,976 & 190.6 \\
+Full sample & Feb 2014 – Dec 2025 & 610 & 111,858 & 183.4 \\
+\bottomrule
+\end{tabular}
+\vspace{1em}
+\textbf{Panel B: Summary Statistics}
+\vspace{0.3em}
+\begin{tabular}{llrrrrrr}
+\toprule
+Block & Variable & Mean & Std & P10 & P50 & P90 & \% Non-zero \\
+\midrule
+Target & 5-day mkt-adj return (target) & -0.0003 & 0.0493 & -0.0537 & -0.0030 & 0.0581 &  \\
+Block 1 & 1-day lagged return & 0.0006 & 0.0230 & -0.0237 & 0.0000 & 0.0277 &  \\
+ & 5-day lagged return & 0.0024 & 0.0531 & -0.0532 & 0.0000 & 0.0629 &  \\
+ & 1-month momentum & 0.0046 & 0.1052 & -0.1086 & 0.0015 & 0.1254 &  \\
+ & 1-month realized volatility & 0.0222 & 0.0106 & 0.0099 & 0.0205 & 0.0371 &  \\
+ & Log market capitalization & 15.1949 & 1.5643 & 13.4170 & 14.9344 & 17.5901 &  \\
+Block 2 & 5-day avg turnover & 0.0072 & 0.0116 & 0.0002 & 0.0027 & 0.0197 &  \\
+ & Amihud illiquidity (×10⁶) & 0.2359 & 1.3599 & 0.0001 & 0.0019 & 0.1406 &  \\
+Block 3 & Foreign buy flow (×10⁶) & 0.1782 & 4.1237 & 0.0000 & 0.0305 & 0.3330 & 84.4 \\
+ & Foreign sell flow (×10⁶) & 0.1632 & 1.8788 & 0.0000 & 0.0304 & 0.3069 & 83.0 \\
+\bottomrule
+\end{tabular}
+\vspace{0.5em}
+\begin{minipage}{0.95\textwidth}
+\footnotesize
+\textit{Notes:} Panel A reports the sample structure after all filters described in Section~\ref{sec:data}. Panel B reports summary statistics on the full sample. All predictors are reported after cross-sectional winsorization at the 1st and 99th percentile within each week and before rank normalization, representing the data environment immediately prior to the final transformation step in the modeling pipeline. The prediction target is reported at the same winsorized scale as it enters model estimation. Foreign buy and sell flow variables are rescaled by $10^6$ for reporting purposes only, correcting for a unit difference between the CaFeF and Datastream data sources; this rescaling does not affect model estimation because all predictors are subsequently transformed into weekly cross-sectional ranks, and any positive scalar rescaling preserves cross-sectional ordering \citep{gu_2020_empirical}. Amihud illiquidity is scaled by $10^6$ for readability. Return variables are expressed as decimals (e.g., 0.01 = 1\%). The percentage of non-zero weekly observations is reported for foreign flow variables.
+\end{minipage}
+\end{table}
