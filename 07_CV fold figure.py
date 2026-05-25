@@ -100,7 +100,7 @@ ax.set_xlim(-0.8, N_BLOCKS * BW + 0.4)
 ax.set_ylim(arrow_y - tick_h - 0.55, header_y + 0.5)
 
 plt.tight_layout(pad=0.3)
-plt.savefig("cv_diagram.png", dpi=300,
+plt.savefig("output/figures/cv_diagram.png", dpi=300,
             bbox_inches="tight", facecolor="white", edgecolor="none")
 plt.show()
 print("Saved: cv_diagram.png")

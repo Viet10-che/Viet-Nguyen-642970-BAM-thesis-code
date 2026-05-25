@@ -27,7 +27,7 @@ plt.rcParams.update({
 })
 
 # Load and compute rolling volatility
-df = pd.read_csv("vnindex_clean.csv")
+df = pd.read_csv("output/intermediate/vnindex_clean.csv")
 df["date"]    = pd.to_datetime(df["date"])
 df            = df.sort_values("date")
 df            = df[(df["date"] >= "2016-01-01") & (df["date"] <= "2025-12-31")]
@@ -81,7 +81,7 @@ ax.text(stress_mid, df["vol_20d"].max() * 0.96,
         fontstyle="italic")
 
 plt.tight_layout(pad=0.4)
-plt.savefig("regime_volatility_apa.png", dpi=300,
+plt.savefig("output/figures/regime_volatility_apa.png", dpi=300,
             bbox_inches="tight", facecolor="white", edgecolor="none")
 plt.show()
 print("Saved: regime_volatility_apa.png")
