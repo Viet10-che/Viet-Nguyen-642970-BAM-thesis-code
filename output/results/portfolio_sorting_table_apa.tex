@@ -1,0 +1,26 @@
+\begin{table}[H]
+\centering
+\small
+\caption{Portfolio Sorting Performance over the Full Out-of-Sample Period}
+\label{tab:portfolio_sorting}
+\begin{tabular}{lrrrrrr}
+\toprule
+Model & Top mean & EW mean & Top EW & Excl. bottom EW & Long short mean & Long short Sharpe \\
+\midrule
+FE B1 & 1.54 & -3.54 & 5.08 & 1.97 & 13.04 & 0.90 \\
+FE B2 & 1.08 & -3.54 & 4.62 & 2.26 & 13.77 & 0.98 \\
+FE B3 & 1.03 & -3.54 & 4.58 & 2.07 & 12.98 & 0.93 \\
+RF B1 & 4.69 & -3.54 & 8.24 & 2.97 & 20.31 & 1.47 \\
+RF B2 & 4.28 & -3.54 & 7.83 & 3.07 & 20.29 & 1.38 \\
+RF B3 & 4.31 & -3.54 & 7.85 & 2.95 & 19.78 & 1.43 \\
+XGB B1 & 7.20 & -3.54 & 10.75 & 3.02 & 22.97 & 1.66 \\
+XGB B2 & 7.43 & -3.54 & 10.97 & 3.62 & 25.66 & 1.88 \\
+XGB B3 & 3.66 & -3.54 & 7.20 & 3.32 & 20.64 & 1.53 \\
+\bottomrule
+\end{tabular}
+\vspace{0.5em}
+\begin{minipage}{0.95\textwidth}
+\footnotesize
+\textit{Note.} Values are based on weekly five-day market-adjusted log returns. Mean returns are annualized and reported in percent. EW refers to the equal-weight benchmark across all stocks in the weekly prediction universe. Top EW is the annualized spread between the top-quintile portfolio and the equal-weight benchmark. Excl. bottom EW is the annualized spread between the portfolio that excludes the bottom quintile and the equal-weight benchmark. The long-short portfolio is reported as a ranking diagnostic.
+\end{minipage}
+\end{table}

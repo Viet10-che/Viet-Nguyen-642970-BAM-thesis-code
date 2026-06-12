@@ -1,40 +1,50 @@
-# Predicting Stock Returns Using Foreign Institutional Flow on the Vietnamese Market
+# Liquidity, Foreign Flows, and Machine Learning in Frontier Market Return Prediction: Evidence from Vietnam
 
-This repository contains the full replication code for the BAM thesis by Viet Nguyen (student ID 642970). The study examines whether foreign institutional trading flow carries predictive information about future stock returns on the Vietnamese equity market, using machine learning models alongside a fixed effects panel regression baseline.
+This repository contains the full replication code for the BAM thesis by Viet Nguyen (student ID 642970). The study examines whether foreign institutional trading flow and liquidity carry predictive information about future stock returns on the Vietnamese equity market, using machine learning models alongside a fixed effects panel regression baseline.
 
 ## How to Run
 
-Run the five notebooks in order from 01 to 05. Each notebook picks up where the previous one left off. The two Python scripts (06 and 07) can be run at any point after notebook 01 finishes.
+Run notebooks 01 to 06 in order. Each notebook reads from the outputs of the previous one. Notebooks 02 to 06 can be run without the licensed datasets as long as the intermediate files in the output folder are present. Figure scripts 07 to 11 can be run independently once the relevant intermediate outputs exist.
 
-All output files are saved automatically into the output folder, which is already in place.
+All output files are saved automatically into the output folder.
 
 ## Data
 
-The three raw input files go inside the **Dataset** folder.
+Three raw input files are required inside the **Dataset** folder.
 
-**sheet_final_raw.csv** contains weekly closing prices for VN100 constituent stocks, sourced from Datastream.
+**sheet_final_raw.csv** contains weekly price and market data for VN100 constituent stocks, sourced from LSEG Datastream. This file is not included in the repository due to licensing restrictions. Please contact the author at 642970bn@student.eur.nl if you need this file to run Notebook 1.
 
-**cafef_foreignflow_222tickers_2014_2026_FIXED.csv** contains weekly foreign buy and sell volume for each stock, scraped from CafeF.
+**cafef_foreignflow_222tickers_2014_2026.csv** contains weekly foreign buy and sell volume for each stock, scraped from CafeF.
 
-**VNindex_raw.csv** contains raw VN-Index level data used to compute market-wide volatility regimes.
+**VNindex_raw.csv** contains raw VN-Index level data used to compute market-wide volatility regimes, sourced from LSEG Datastream. This file is also not included due to licensing restrictions; please contact the author.
+
+Notebooks 02 to 06 do not require these raw files and can be run using the intermediate outputs already saved in the output folder.
 
 ## Notebooks
 
-**01 data preparation** loads the raw price and foreign flow data, aligns dates, handles missing values, and computes the core features for each stock and week.
+**01 data preparation** loads and merges the raw price and foreign flow data, constructs the five-day-ahead market-adjusted return target, and engineers all predictive features across three blocks.
 
-**02 panel construction** takes the feature panel and applies additional filters, including removing weeks with insufficient coverage and dropping delisted tickers. The result is a cleaned panel ready for modelling.
+**02 panel construction** converts the daily feature panel to a weekly forecasting panel, applies coverage filters, and defines the development and out-of-sample periods.
 
-**03 forecasting** trains and evaluates three model types across three feature blocks using an expanding walk-forward window. The model types are a Fixed Effects panel regression, a Random Forest, and XGBoost. All predictions and intermediate results are saved for use in the next step.
+**03 forecasting** runs all model training and prediction: hyperparameter tuning, expanding walk-forward forecasting for nine model–block combinations, SHAP value computation, and regime labelling.
 
-**04 evaluation** reads the saved predictions and computes all hypothesis test results reported in the thesis. This includes predictability tests (H2), feature importance via SHAP values (H3), and regime-conditional performance (H4). Charts and summary tables are saved into the output folder.
+**04 evaluation** reads the saved predictions and tests all eight hypotheses, including predictability tests, SHAP-based feature importance, and regime-conditional performance.
 
-**05 descriptive statistics** generates the descriptive statistics tables shown in the thesis, including a LaTeX-formatted table ready for inclusion in the written report.
+**05 descriptive statistics** computes and exports the sample description and summary statistics tables used in the thesis.
+
+**06 portfolio evaluation** evaluates the economic significance of model forecasts through portfolio sorting and computes regime-conditional portfolio performance.
 
 ## Figure Scripts
 
-**06 figure.py** produces a publication-style chart showing the volatility regime classification over the full sample period.
+**07 regime\_volatility.py** plots the rolling volatility regime classification over the full sample period.
 
-**07 CV fold figure.py** produces a diagram illustrating the expanding window cross-validation design used in the forecasting step.
+**08 CV fold figure.py** produces the expanding window cross-validation diagram used in the methodology section.
+
+**09 figure\_portfolio\_long\_only.py** plots cumulative returns for the top-quintile and exclude-bottom long-only strategies for RF and XGB Block 3.
+
+**10 figure\_portfolio\_spreads.py** plots the cumulative long-short spread as a ranking diagnostic for RF and XGB Block 3.
+
+**11 figure\_portfolio\_xgb\_b2\_appendix.py** plots the XGB Block 2 portfolio performance included in the appendix.
 
 ## Output Structure
 
@@ -43,3 +53,7 @@ The output folder contains three subfolders. The **intermediate** subfolder hold
 ## Requirements
 
 The code runs on Python 3.9 or later. The main packages are pandas, numpy, scikit-learn, xgboost, shap, statsmodels, and matplotlib. A standard Anaconda environment includes all of these.
+
+## License
+
+The code in this repository is released under the MIT License. You are free to use, modify, and distribute it with attribution. The datasets are not covered by this license; please refer to the original data providers (LSEG Datastream and CafeF) for their respective terms of use.

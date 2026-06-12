@@ -34,9 +34,4 @@ Block 3 & Foreign buy flow (×10⁶) & 0.1782 & 4.1237 & 0.0000 & 0.0305 & 0.333
  & Foreign sell flow (×10⁶) & 0.1632 & 1.8788 & 0.0000 & 0.0304 & 0.3069 & 83.0 \\
 \bottomrule
 \end{tabular}
-\vspace{0.5em}
-\begin{minipage}{0.95\textwidth}
-\footnotesize
-\textit{Notes:} Panel A reports the sample structure after all filters described in Section~\ref{sec:data}. Panel B reports summary statistics on the full sample. All predictors are reported after cross-sectional winsorization at the 1st and 99th percentile within each week and before rank normalization, representing the data environment immediately prior to the final transformation step in the modeling pipeline. The prediction target is reported at the same winsorized scale as it enters model estimation. Foreign buy and sell flow variables are rescaled by $10^6$ for reporting purposes only, correcting for a unit difference between the CaFeF and Datastream data sources; this rescaling does not affect model estimation because all predictors are subsequently transformed into weekly cross-sectional ranks, and any positive scalar rescaling preserves cross-sectional ordering \citep{gu_2020_empirical}. Amihud illiquidity is scaled by $10^6$ for readability. Return variables are expressed as decimals (e.g., 0.01 = 1\%). The percentage of non-zero weekly observations is reported for foreign flow variables.
-\end{minipage}
 \end{table}
