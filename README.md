@@ -26,7 +26,7 @@ Notebooks 02 to 06 do not require these raw files and can be run using the inter
 
 **02 panel construction** converts the daily feature panel to a weekly forecasting panel, applies coverage filters, and defines the development and out-of-sample periods.
 
-**03 forecasting** runs all model training and prediction: hyperparameter tuning, expanding walk-forward forecasting for nine model–block combinations, SHAP value computation, and regime labelling.
+**03 forecasting** runs all model training and prediction: hyperparameter tuning, expanding walk-forward forecasting for nine model–block combinations, SHAP value computation, and regime labeling.
 
 **04 evaluation** reads the saved predictions and tests all eight hypotheses, including predictability tests, SHAP-based feature importance, and regime-conditional performance.
 
@@ -56,4 +56,4 @@ The code runs on Python 3.9 or later. The main packages are pandas, numpy, sciki
 
 ## License
 
-The code in this repository is released under the MIT License. You are free to use, modify, and distribute it with attribution. The datasets are not covered by this license; please refer to the original data providers (LSEG Datastream and CafeF) for their respective terms of use.
+© 2026 Viet Nguyen. All rights reserved. This code is provided for academic reference only. Any use, reproduction, or distribution, commercial or otherwise, requires prior written permission from the author. The datasets used in this project are not covered by this notice; please refer to the original data providers (LSEG Datastream and CafeF) for their respective terms of use.
