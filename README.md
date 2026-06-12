@@ -1,22 +1,22 @@
 # Liquidity, Foreign Flows, and Machine Learning in Frontier Market Return Prediction: Evidence from Vietnam
 
-This repository contains the full replication code for the BAM thesis by Viet Nguyen (student ID 642970). The study examines whether foreign institutional trading flow and liquidity carry predictive information about future stock returns on the Vietnamese equity market, using machine learning models alongside a fixed effects panel regression baseline.
+This repository contains the full replication code for the BAM thesis by Viet Nguyen (student ID 642970). The study examines whether foreign trading flows and liquidity carry predictive information about future stock returns in the Vietnamese equity market, using machine learning models alongside a fixed-effects panel regression baseline.
 
 ## How to Run
 
-Run notebooks 01 to 06 in order. Each notebook reads from the outputs of the previous one. Notebooks 02 to 06 can be run without the licensed datasets as long as the intermediate files in the output folder are present. Figure scripts 07 to 11 can be run independently once the relevant intermediate outputs exist.
+Run notebooks 01 to 06 in order. Each notebook reads from the outputs of the previous one. Notebooks 02 to 06 can be run without the licensed datasets as long as the intermediate files in the output folder are present. The figure scripts 07 to 11 can be run independently once the relevant intermediate outputs are available.
 
-All output files are saved automatically into the output folder.
+All output files are automatically saved in the output folder.
 
 ## Data
 
 Three raw input files are required inside the **Dataset** folder.
 
-**sheet_final_raw.csv** contains weekly price and market data for VN100 constituent stocks, sourced from LSEG Datastream. This file is not included in the repository due to licensing restrictions. Please contact the author at 642970bn@student.eur.nl if you need this file to run Notebook 1.
-
-**cafef_foreignflow_222tickers_2014_2026.csv** contains weekly foreign buy and sell volume for each stock, scraped from CafeF.
+**sheet_final_raw.csv** contains weekly price and market data for VN100 constituent stocks, sourced from LSEG Datastream. This file is not included in the repository due to licensing restrictions. Please contact the author at 642970bn@eur.nl if you need this file to run Notebook 1.
 
 **VNindex_raw.csv** contains raw VN-Index level data used to compute market-wide volatility regimes, sourced from LSEG Datastream. This file is also not included due to licensing restrictions; please contact the author.
+
+**cafef_foreignflow_222tickers_2014_2026.csv** contains weekly foreign buy and sell volume for each stock, scraped from CafeF.
 
 Notebooks 02 to 06 do not require these raw files and can be run using the intermediate outputs already saved in the output folder.
 
