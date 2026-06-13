@@ -1,7 +1,9 @@
 # Notebook 1: Data Preparation
 
-**Input:** `Dataset/sheet_final_raw.csv`, `Dataset/cafef_foreignflow_222tickers_2014_2026_FIXED.csv`, `Dataset/VNindex_raw.csv`
+**Input:** `Dataset/sheet_final_raw.csv`, `Dataset/cafef_foreignflow_222tickers_2014_2026.csv`, `Dataset/VNindex_raw.csv`
+
 **Output:** `features_panel.csv`, `vnindex_clean.csv`
+
 **Purpose:** Clean and merge raw data sources, construct the prediction target, and engineer all features used in modeling.
 
 
@@ -29,7 +31,7 @@ non-trading days and remain as NaN after the merge.
 ```python
 # File paths
 PRICE_FILE   = "Dataset/sheet_final_raw.csv"
-FLOW_FILE    = "Dataset/cafef_foreignflow_222tickers_2014_2026_FIXED.csv"
+FLOW_FILE    = "Dataset/cafef_foreignflow_222tickers_2014_2026.csv"
 VNINDEX_FILE = "Dataset/VNindex_raw.csv"
 
 
@@ -157,7 +159,7 @@ vn["vnindex"] = pd.to_numeric(vn["vnindex"], errors="coerce")
 vn = vn.dropna(subset=["date"]).reset_index(drop=True)
 
 # Save VNIndex — used in later notebooks
-vn.to_csv("vnindex_clean.csv", index=False)
+vn.to_csv("output/intermediate/vnindex_clean.csv", index=False)
 ```
 
 
@@ -408,7 +410,7 @@ df["f_sell_5d"] = (
 ```python
 # 1.3.5 Drop intermediates, save and validate
 df = df.drop(columns=["turnover", "amihud", "f_buy", "f_sell"])
-df.to_csv("features_panel.csv", index=False)
+df.to_csv("output/intermediate/features_panel.csv", index=False)
 
 feature_cols = [
     "ret_1d_lag", "ret_5d_lag", "momentum_1m", "volatility_1m", "log_size",

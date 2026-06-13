@@ -1,21 +1,17 @@
 # Notebook 5: Sample Description and Descriptive Statistics
 
-**Input:** `features_panel.csv`, `model_ready.csv`  
-**Output:** `descriptive_ready.csv`, `desc_summary_stats.csv`, `desc_table.tex`
+**Input:** `output/intermediate/descriptive_ready.csv` (saved by NB2 — post-winsorization, pre-rank-normalization)  
+**Output:** `output/results/descriptive_ready.csv`, `desc_summary_stats.csv`, `desc_table.tex`
 
 **Pipeline:**
 ```
-features_panel.csv
-  → filter exact (ticker, date) pairs from model_ready
-  → cross-sectional winsorization P1/P99 WITHIN EACH WEEK  [replicate NB2]
-  → STOP before rank normalization
-  → f_buy_5d  *= 1e6  (unit correction, reporting only)
-  → f_sell_5d *= 1e6  (unit correction, reporting only)
-  → amihud_5d *= 1e6  (readability scaling)
-  → save descriptive_ready.csv → compute tables
+descriptive_ready.csv  (from NB2: winsorized, pre-rank-norm, original scale)
+  → return vars  *= 100   (convert to %, reporting only)
+  → f_buy_5d     *= 1e6   (unit correction, reporting only)
+  → f_sell_5d    *= 1e6   (unit correction, reporting only)
+  → amihud_5d    *= 1e6   (readability scaling)
+  → save to output/results/ → compute tables
 ```
-
-**Critical:** model_ready.csv, predictions.csv, SHAP files are NEVER touched.
 
 
 ```
@@ -30,118 +26,42 @@ FEATURE_COLS = [
     "turnover_5d", "amihud_5d", "f_buy_5d", "f_sell_5d"
 ]
 FLOW_COLS   = ["f_buy_5d", "f_sell_5d"]
-WINSOR_COLS = FEATURE_COLS + [TARGET_COL]
+RETURN_COLS = [TARGET_COL, "ret_1d_lag", "ret_5d_lag", "momentum_1m", "volatility_1m"]
 ```
 
 ## 5.1 Load Data
 
 
 ```
-model_ready    = pd.read_csv("model_ready.csv",    parse_dates=["date"])
-features_panel = pd.read_csv("features_panel.csv", parse_dates=["date"])
-
-print("model_ready shape:    ", model_ready.shape)
-print("features_panel shape: ", features_panel.shape)
-
-missing = [c for c in WINSOR_COLS if c not in features_panel.columns]
-print("Missing columns:", missing if missing else "None — all OK")
-```
-
-    model_ready shape:     (111858, 13)
-    features_panel shape:  (568513, 35)
-    Missing columns: None — all OK
-
-
-## 5.2 Filter to Exact Modeling Sample
-
-Keep only (ticker, date) pairs present in model_ready.
-
-
-```
-base = model_ready[["ticker", "date", "sample_period"]].copy()
-
-desc_df = base.merge(
-    features_panel[["ticker", "date"] + FEATURE_COLS + [TARGET_COL]],
-    on=["ticker", "date"],
-    how="left"
-)
+desc_df = pd.read_csv("output/intermediate/descriptive_ready.csv", parse_dates=["date"])
 
 print("Shape:", desc_df.shape)
-print("Missing per column:")
-print(desc_df[WINSOR_COLS].isna().sum())
-assert len(desc_df) == len(model_ready), "Row count mismatch"
-print("\nRow count matches model_ready: OK")
+print("Columns:", list(desc_df.columns))
+print("Date range:", desc_df["date"].min(), "–", desc_df["date"].max())
+print("Sample periods:", desc_df["sample_period"].value_counts().to_dict())
 ```
 
     Shape: (111858, 13)
-    Missing per column:
-    ret_1d_lag          0
-    ret_5d_lag          0
-    momentum_1m         0
-    volatility_1m       0
-    log_size            0
-    turnover_5d         0
-    amihud_5d           0
-    f_buy_5d            0
-    f_sell_5d           0
-    target_5d_mktadj    0
-    dtype: int64
-    
-    Row count matches model_ready: OK
+    Columns: ['ticker', 'date', 'target_5d_mktadj', 'ret_1d_lag', 'ret_5d_lag', 'momentum_1m', 'volatility_1m', 'log_size', 'turnover_5d', 'amihud_5d', 'f_buy_5d', 'f_sell_5d', 'sample_period']
+    Date range: 2014-02-17 00:00:00 – 2025-12-29 00:00:00
+    Sample periods: {'oos': 97976, 'development': 13882}
 
 
-## 5.3 Cross-Sectional Winsorization (Replicate NB2 Exactly)
+## 5.2 Rescale for Readability (Reporting Only)
 
-Winsorize at P1/P99 WITHIN EACH WEEK. Identical to NB2.
-Stopping here = closest snapshot to actual modeling environment.
-
-
-```
-def cross_sectional_winsorize(df, cols, lower=0.01, upper=0.99):
-    df = df.copy()
-    for col in cols:
-        def _clip(group):
-            lo = group.quantile(lower)
-            hi = group.quantile(upper)
-            return group.clip(lo, hi)
-        df[col] = df.groupby("date")[col].transform(_clip)
-    return df
-
-desc_df = cross_sectional_winsorize(desc_df, WINSOR_COLS)
-print("Winsorization complete.")
-print("\nStats after winsorization (pre-rescaling):")
-print(desc_df[WINSOR_COLS].describe().loc[["mean","std","min","max"]].round(6))
-```
-
-    Winsorization complete.
-    
-    Stats after winsorization (pre-rescaling):
-          ret_1d_lag  ret_5d_lag  momentum_1m  volatility_1m   log_size  \
-    mean    0.000604    0.002404     0.004578       0.022194  15.194916   
-    std     0.022999    0.053065     0.105180       0.010641   1.564310   
-    min    -0.091604   -0.357565    -1.030005       0.002227  11.351666   
-    max     0.125691    0.332002     0.579087       0.079189  20.045885   
-    
-          turnover_5d  amihud_5d  f_buy_5d  f_sell_5d  target_5d_mktadj  
-    mean     0.007196   0.000000  0.000000   0.000000         -0.000298  
-    std      0.011601   0.000001  0.000004   0.000002          0.049341  
-    min      0.000002   0.000000  0.000000   0.000000         -0.376129  
-    max      0.198732   0.000040  0.000895   0.000299          0.298420  
-
-
-## 5.4 Rescale for Readability (Reporting Only)
-
-**f_buy_5d, f_sell_5d × 10⁶:** corrects unit difference between
-CaFeF (billions VND) and Datastream (thousands VND).
-Expresses foreign flow as proportion of total trading value.
-
+**Return variables × 100:** expressed as percentages for reporting.  
+**f_buy_5d, f_sell_5d × 10⁶:** corrects unit difference between CaFeF (billions VND) and Datastream (thousands VND).  
 **amihud_5d × 10⁶:** raw values ~10⁻¹⁰ to 10⁻⁵, scaling for readability.
 
-Applied AFTER winsorization so outliers are already clipped.
+Applied after winsorization (done in NB2) so outliers are already clipped.  
 Does NOT affect model results — rank normalization preserves ordering.
 
 
 ```
+# Convert returns to percentage (reporting only)
+for col in RETURN_COLS:
+    desc_df[col] = desc_df[col] * 100
+
 # Unit correction for foreign flows
 for col in FLOW_COLS:
     desc_df[col] = desc_df[col] * 1e6
@@ -150,40 +70,42 @@ for col in FLOW_COLS:
 desc_df["amihud_5d"] = desc_df["amihud_5d"] * 1e6
 
 print("Rescaling applied.")
+print(f"  Returns ×100: {RETURN_COLS}")
+print(f"  Flows ×1e6:   {FLOW_COLS}")
+print(f"  Amihud ×1e6")
 print()
-print("Foreign flow sanity check (should be in [0, ~1] for most obs):")
-for col in FLOW_COLS:
-    pct_zero     = (desc_df[col] == 0).mean() * 100
-    pct_above_1  = (desc_df[col] > 1).mean() * 100
-    pct_nonzero  = (desc_df[col] > 0).mean() * 100
-    print(f"  {col}: mean={desc_df[col].mean():.4f}, "
-          f"P99={desc_df[col].quantile(0.99):.4f}, "
-          f"max={desc_df[col].max():.4f}, "
-          f"{pct_zero:.1f}% zero, {pct_nonzero:.1f}% non-zero, "
-          f"{pct_above_1:.2f}% above 1.0")
+print("Return sanity check (target std should be ~2–10% weekly):")
+for col in RETURN_COLS:
+    print(f"  {col}: mean={desc_df[col].mean():.4f}%, std={desc_df[col].std():.4f}%")
 ```
 
     Rescaling applied.
+      Returns ×100: ['target_5d_mktadj', 'ret_1d_lag', 'ret_5d_lag', 'momentum_1m', 'volatility_1m']
+      Flows ×1e6:   ['f_buy_5d', 'f_sell_5d']
+      Amihud ×1e6
     
-    Foreign flow sanity check (should be in [0, ~1] for most obs):
-      f_buy_5d: mean=0.1782, P99=1.4679, max=894.7444, 15.6% zero, 84.4% non-zero, 1.51% above 1.0
-      f_sell_5d: mean=0.1632, P99=1.3736, max=298.5240, 17.0% zero, 83.0% non-zero, 1.44% above 1.0
+    Return sanity check (target std should be ~2–10% weekly):
+      target_5d_mktadj: mean=-0.0298%, std=4.9341%
+      ret_1d_lag: mean=0.0604%, std=2.2999%
+      ret_5d_lag: mean=0.2404%, std=5.3065%
+      momentum_1m: mean=0.5795%, std=9.9677%
+      volatility_1m: mean=2.2194%, std=1.0641%
 
 
-## 5.5 Save descriptive_ready.csv
+## 5.3 Save descriptive_ready.csv
 
 
 ```
-desc_df.to_csv("descriptive_ready.csv", index=False)
-print("Saved: descriptive_ready.csv")
+desc_df.to_csv("output/results/descriptive_ready.csv", index=False)
+print("Saved: output/results/descriptive_ready.csv")
 print(f"Shape: {desc_df.shape}")
 ```
 
-    Saved: descriptive_ready.csv
+    Saved: output/results/descriptive_ready.csv
     Shape: (111858, 13)
 
 
-## 5.6 Panel A: Sample Structure
+## 5.4 Panel A: Sample Structure
 
 
 ```
@@ -217,23 +139,23 @@ print(panel_a.to_string(index=False))
     Full sample Feb 2014 – Dec 2025    610        111858             219             183.4
 
 
-## 5.7 Panel B: Summary Statistics
+## 5.5 Panel B: Summary Statistics
 
-Post-winsorization | pre-rank-normalization | flows + Amihud rescaled ×10⁶
+Post-winsorization | pre-rank-normalization | returns in % | flows + Amihud ×10⁶
 
 
 ```
 LABEL_MAP = {
-    TARGET_COL:      "5-day mkt-adj return (target)",
-    "ret_1d_lag":    "1-day lagged return",
-    "ret_5d_lag":    "5-day lagged return",
-    "momentum_1m":   "1-month momentum",
-    "volatility_1m": "1-month realized volatility",
+    TARGET_COL:      "5-day mkt-adj return (%)",
+    "ret_1d_lag":    "1-day lagged return (%)",
+    "ret_5d_lag":    "5-day lagged return (%)",
+    "momentum_1m":   "1-month momentum (%)",
+    "volatility_1m": "1-month realized volatility (%)",
     "log_size":      "Log market capitalization",
     "turnover_5d":   "5-day avg turnover",
-    "amihud_5d":     "Amihud illiquidity (×10⁶)",
-    "f_buy_5d":      "Foreign buy flow (×10⁶)",
-    "f_sell_5d":     "Foreign sell flow (×10⁶)",
+    "amihud_5d":     "Amihud illiquidity (\u00d710\u2076)",
+    "f_buy_5d":      "Foreign buy flow (\u00d710\u2076)",
+    "f_sell_5d":     "Foreign sell flow (\u00d710\u2076)",
 }
 BLOCK_MAP = {
     TARGET_COL:      "Target",
@@ -263,7 +185,7 @@ for col in [TARGET_COL] + FEATURE_COLS:
 panel_b = pd.DataFrame(rows)
 
 print("Panel B: Summary Statistics")
-print("(post-winsorization | pre-rank-normalization | flows + Amihud ×10⁶)")
+print("(post-winsorization | pre-rank-norm | returns in % | flows+Amihud \u00d710\u2076)")
 print()
 for _, r in panel_b.iterrows():
     nz = f"  [{r['% Non-zero']:.1f}% non-zero]" if pd.notna(r["% Non-zero"]) else ""
@@ -272,18 +194,18 @@ for _, r in panel_b.iterrows():
           f"p10={r['P10']:>9.4f}  p50={r['P50']:>9.4f}  "
           f"p90={r['P90']:>9.4f}{nz}")
 
-panel_b.to_csv("desc_summary_stats.csv", index=False)
+panel_b.to_csv("output/results/desc_summary_stats.csv", index=False)
 print("\nSaved: desc_summary_stats.csv")
 ```
 
     Panel B: Summary Statistics
-    (post-winsorization | pre-rank-normalization | flows + Amihud ×10⁶)
+    (post-winsorization | pre-rank-norm | returns in % | flows+Amihud ×10⁶)
     
-    Target   5-day mkt-adj return (target)              mean=  -0.0003  std=   0.0493  p10=  -0.0537  p50=  -0.0030  p90=   0.0581
-    Block 1  1-day lagged return                        mean=   0.0006  std=   0.0230  p10=  -0.0237  p50=   0.0000  p90=   0.0277
-    Block 1  5-day lagged return                        mean=   0.0024  std=   0.0531  p10=  -0.0532  p50=   0.0000  p90=   0.0629
-    Block 1  1-month momentum                           mean=   0.0046  std=   0.1052  p10=  -0.1086  p50=   0.0015  p90=   0.1254
-    Block 1  1-month realized volatility                mean=   0.0222  std=   0.0106  p10=   0.0099  p50=   0.0205  p90=   0.0371
+    Target   5-day mkt-adj return (%)                   mean=  -0.0298  std=   4.9341  p10=  -5.3730  p50=  -0.3044  p90=   5.8057
+    Block 1  1-day lagged return (%)                    mean=   0.0604  std=   2.2999  p10=  -2.3651  p50=   0.0000  p90=   2.7697
+    Block 1  5-day lagged return (%)                    mean=   0.2404  std=   5.3065  p10=  -5.3162  p50=   0.0000  p90=   6.2932
+    Block 1  1-month momentum (%)                       mean=   0.5795  std=   9.9677  p10=  -9.9912  p50=   0.2557  p90=  12.0079
+    Block 1  1-month realized volatility (%)            mean=   2.2194  std=   1.0641  p10=   0.9938  p50=   2.0505  p90=   3.7068
     Block 1  Log market capitalization                  mean=  15.1949  std=   1.5643  p10=  13.4170  p50=  14.9344  p90=  17.5901
     Block 2  5-day avg turnover                         mean=   0.0072  std=   0.0116  p10=   0.0002  p50=   0.0027  p90=   0.0197
     Block 2  Amihud illiquidity (×10⁶)                  mean=   0.2359  std=   1.3599  p10=   0.0001  p50=   0.0019  p90=   0.1406
@@ -293,16 +215,22 @@ print("\nSaved: desc_summary_stats.csv")
     Saved: desc_summary_stats.csv
 
 
-## 5.8 Export LaTeX Table
+## 5.6 Export LaTeX Table
 
 Requires `\usepackage{booktabs}` in LaTeX preamble.
 
 
 ```
-def fmt(x, decimals=4):
+def fmt(x, decimals=2):
     if pd.isna(x) or x is None:
         return ""
     return f"{x:.{decimals}f}"
+
+def fmt4(x):
+    return fmt(x, 4)
+
+# Return rows use 2 decimal places; others use 4
+RETURN_LABELS = {LABEL_MAP[c] for c in RETURN_COLS}
 
 lines = []
 lines.append(r"\begin{table}[ht]")
@@ -342,46 +270,30 @@ for _, row in panel_b.iterrows():
     block_label   = row["Block"] if row["Block"] != current_block else ""
     current_block = row["Block"]
     nz_str = f"{row['% Non-zero']:.1f}" if pd.notna(row["% Non-zero"]) else ""
+    f = fmt if row["Variable"] in RETURN_LABELS else fmt4
     lines.append(
         f"{block_label} & {row['Variable']} & "
-        f"{fmt(row['Mean'])} & {fmt(row['Std'])} & "
-        f"{fmt(row['P10'])} & {fmt(row['P50'])} & "
-        f"{fmt(row['P90'])} & {nz_str} \\\\"
+        f"{f(row['Mean'])} & {f(row['Std'])} & "
+        f"{f(row['P10'])} & {f(row['P50'])} & "
+        f"{f(row['P90'])} & {nz_str} \\\\"
     )
 
 lines.append(r"\bottomrule")
 lines.append(r"\end{tabular}")
 
-# Table note
-lines.append(r"\vspace{0.5em}")
-lines.append(r"\begin{minipage}{0.95\textwidth}")
-lines.append(r"\footnotesize")
+# Note
+lines.append(r"\vspace{0.3em}")
 lines.append(
-    r"\textit{Notes:} Panel A reports the sample structure after all filters "
-    r"described in Section~\ref{sec:data}. "
-    r"Panel B reports summary statistics on the full sample. "
-    r"All predictors are reported after cross-sectional winsorization at the "
-    r"1st and 99th percentile within each week and before rank normalization, "
-    r"representing the data environment immediately prior to the final "
-    r"transformation step in the modeling pipeline. "
-    r"The prediction target is reported at the same winsorized scale as it "
-    r"enters model estimation. "
-    r"Foreign buy and sell flow variables are rescaled by $10^6$ for reporting "
-    r"purposes only, correcting for a unit difference between the CaFeF and "
-    r"Datastream data sources; this rescaling does not affect model estimation "
-    r"because all predictors are subsequently transformed into weekly "
-    r"cross-sectional ranks, and any positive scalar rescaling preserves "
-    r"cross-sectional ordering \citep{gu_2020_empirical}. "
-    r"Amihud illiquidity is scaled by $10^6$ for readability. "
-    r"Return variables are expressed as decimals (e.g., 0.01 = 1\%). "
-    r"The percentage of non-zero weekly observations is reported for "
-    r"foreign flow variables."
+    r"\begin{minipage}{\linewidth}"
+    r"\footnotesize \textit{Note.} "
+    r"Return variables are expressed as percentages. "
+    r"Amihud illiquidity and foreign flow variables are multiplied by $10^6$ for readability."
+    r"\end{minipage}"
 )
-lines.append(r"\end{minipage}")
 lines.append(r"\end{table}")
 
 latex_str = "\n".join(lines)
-with open("desc_table.tex", "w") as f:
+with open("output/results/desc_table.tex", "w") as f:
     f.write(latex_str)
 
 print("Saved: desc_table.tex")
@@ -415,11 +327,11 @@ print(latex_str)
     \toprule
     Block & Variable & Mean & Std & P10 & P50 & P90 & \% Non-zero \\
     \midrule
-    Target & 5-day mkt-adj return (target) & -0.0003 & 0.0493 & -0.0537 & -0.0030 & 0.0581 &  \\
-    Block 1 & 1-day lagged return & 0.0006 & 0.0230 & -0.0237 & 0.0000 & 0.0277 &  \\
-     & 5-day lagged return & 0.0024 & 0.0531 & -0.0532 & 0.0000 & 0.0629 &  \\
-     & 1-month momentum & 0.0046 & 0.1052 & -0.1086 & 0.0015 & 0.1254 &  \\
-     & 1-month realized volatility & 0.0222 & 0.0106 & 0.0099 & 0.0205 & 0.0371 &  \\
+    Target & 5-day mkt-adj return (%) & -0.03 & 4.93 & -5.37 & -0.30 & 5.81 &  \\
+    Block 1 & 1-day lagged return (%) & 0.06 & 2.30 & -2.37 & 0.00 & 2.77 &  \\
+     & 5-day lagged return (%) & 0.24 & 5.31 & -5.32 & 0.00 & 6.29 &  \\
+     & 1-month momentum (%) & 0.58 & 9.97 & -9.99 & 0.26 & 12.01 &  \\
+     & 1-month realized volatility (%) & 2.22 & 1.06 & 0.99 & 2.05 & 3.71 &  \\
      & Log market capitalization & 15.1949 & 1.5643 & 13.4170 & 14.9344 & 17.5901 &  \\
     Block 2 & 5-day avg turnover & 0.0072 & 0.0116 & 0.0002 & 0.0027 & 0.0197 &  \\
      & Amihud illiquidity (×10⁶) & 0.2359 & 1.3599 & 0.0001 & 0.0019 & 0.1406 &  \\
@@ -427,10 +339,7 @@ print(latex_str)
      & Foreign sell flow (×10⁶) & 0.1632 & 1.8788 & 0.0000 & 0.0304 & 0.3069 & 83.0 \\
     \bottomrule
     \end{tabular}
-    \vspace{0.5em}
-    \begin{minipage}{0.95\textwidth}
-    \footnotesize
-    \textit{Notes:} Panel A reports the sample structure after all filters described in Section~\ref{sec:data}. Panel B reports summary statistics on the full sample. All predictors are reported after cross-sectional winsorization at the 1st and 99th percentile within each week and before rank normalization, representing the data environment immediately prior to the final transformation step in the modeling pipeline. The prediction target is reported at the same winsorized scale as it enters model estimation. Foreign buy and sell flow variables are rescaled by $10^6$ for reporting purposes only, correcting for a unit difference between the CaFeF and Datastream data sources; this rescaling does not affect model estimation because all predictors are subsequently transformed into weekly cross-sectional ranks, and any positive scalar rescaling preserves cross-sectional ordering \citep{gu_2020_empirical}. Amihud illiquidity is scaled by $10^6$ for readability. Return variables are expressed as decimals (e.g., 0.01 = 1\%). The percentage of non-zero weekly observations is reported for foreign flow variables.
-    \end{minipage}
+    \vspace{0.3em}
+    \begin{minipage}{\linewidth}\footnotesize \textit{Note.} Return variables are expressed as percentages. Amihud illiquidity and foreign flow variables are multiplied by $10^6$ for readability.\end{minipage}
     \end{table}
 

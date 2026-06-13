@@ -25,36 +25,39 @@ from matplotlib.patches import Patch
 
 ```python
 # Main prediction panel — one row per (ticker, week), 97,976 rows
-pred = pd.read_csv("predictions.csv")
+pred = pd.read_csv("output/intermediate/predictions.csv")
 pred["date"] = pd.to_datetime(pred["date"])
 
 # Weekly regime labels — 514 weeks
-regime_labels = pd.read_csv("regime_labels.csv")
+regime_labels = pd.read_csv("output/intermediate/regime_labels.csv")
 regime_labels["date"] = pd.to_datetime(regime_labels["date"])
 pred = pred.merge(regime_labels, on="date", how="left")
 
 # SHAP values for RF Block 3 and XGB Block 3 — same rows as pred
 # regime column is already attached by Notebook 3, no extra merge needed
-shap_rf = pd.read_csv("shap_rf_b3.csv")
+shap_rf = pd.read_csv("output/intermediate/shap_rf_b3.csv")
 shap_rf["date"] = pd.to_datetime(shap_rf["date"])
 
-shap_xgb = pd.read_csv("shap_xgb_b3.csv")
+shap_xgb = pd.read_csv("output/intermediate/shap_xgb_b3.csv")
 shap_xgb["date"] = pd.to_datetime(shap_xgb["date"])
 
 # H2a quintile results — from Notebook 3 expanding window per quintile
-h2a_results = pd.read_csv("h2a_results.csv")
-h2a_compare = pd.read_csv("h2a_compare.csv")   # B1 vs B2 per quintile per model
+h2a_results = pd.read_csv("output/intermediate/h2a_results.csv")
+h2a_compare = pd.read_csv("output/intermediate/h2a_compare.csv")   # B1 vs B2 per quintile per model
 
 # H4 regime results — Block 3 OOS R² per regime
-h4_regime    = pd.read_csv("h4_regime_results.csv")
-h4_advantage = pd.read_csv("h4_regime_advantage.csv")  # ML advantage over FE
+h4_regime    = pd.read_csv("output/intermediate/h4_regime_results.csv")
+h4_advantage = pd.read_csv("output/intermediate/h4_regime_advantage.csv")  # ML advantage over FE
 
+# Store actual returns and dates for later performance calculations
 actual = pred["actual"].values
 dates  = pred["date"].values
 
+# Feature list used in the full Block 3 model
 FEATURE_COLS = ["ret_1d_lag", "ret_5d_lag", "momentum_1m", "volatility_1m",
                 "log_size", "turnover_5d", "amihud_5d", "f_buy_5d", "f_sell_5d"]
 
+# Clean variable names for tables and figures
 LABEL_MAP = {
     "ret_1d_lag":    "1-day return lag",    "ret_5d_lag":    "5-day return lag",
     "momentum_1m":   "1-month momentum",    "volatility_1m": "1-month volatility",
@@ -63,6 +66,7 @@ LABEL_MAP = {
     "f_sell_5d":     "Foreign sell flow",
 }
 
+# Assign colors by feature block for SHAP plots
 BLOCK_COLORS = {
     "ret_1d_lag": "#4e79a7", "ret_5d_lag": "#4e79a7",
     "momentum_1m": "#4e79a7", "volatility_1m": "#4e79a7", "log_size": "#4e79a7",
@@ -70,6 +74,7 @@ BLOCK_COLORS = {
     "f_buy_5d": "#e15759",   "f_sell_5d": "#e15759",
 }
 
+# Legend labels for the three feature blocks
 LEGEND_ELEMENTS = [
     Patch(facecolor="#4e79a7", label="Block 1: Return signals"),
     Patch(facecolor="#f28e2b", label="Block 2: Liquidity"),
@@ -103,6 +108,7 @@ A positive DM statistic means model 2 has lower MSE than model 1.
 
 
 ```python
+# Compute OOS R² against the historical mean benchmark
 def oos_r2(actual, predicted):
     """OOS R² relative to historical mean benchmark (Gu et al. 2020)."""
     bench     = np.full_like(actual, actual.mean())
@@ -111,14 +117,17 @@ def oos_r2(actual, predicted):
     return 1 - sse_model / sse_bench
 
 
+# Compute mean absolute prediction error
 def mae(actual, predicted):
     return np.mean(np.abs(actual - predicted))
 
 
+# Compute root mean squared prediction error
 def rmse(actual, predicted):
     return np.sqrt(np.mean((actual - predicted) ** 2))
 
 
+# Run Diebold-Mariano test to compare two models' forecast accuracy
 def dm_test(actual, pred1, pred2, dates, n_lags=4):
     """
     Diebold-Mariano test.
@@ -139,6 +148,7 @@ def dm_test(actual, pred1, pred2, dates, n_lags=4):
     return float(res.tvalues[0]), float(res.pvalues[0])
 
 
+# Convert p-values into APA-style significance stars
 def stars(p):
     """APA 7 significance stars: max 3 stars, no 4-star notation."""
     if p < 0.001: return "***"
@@ -147,6 +157,7 @@ def stars(p):
     return ""
 
 
+# Interpret whether the DM test supports the expected direction
 def dm_verdict(dm_stat, p_dm, alpha=0.05):
     """
     Correct verdict for a DM test where a positive stat means 'hypothesis supported'.
@@ -178,6 +189,7 @@ A positive DM statistic means the ML model has lower MSE than FE.
 print("H1: OOS metrics — all model-block combinations")
 print(f"{'Model':<6} {'Block':<6} {'OOS R²':>8} {'MAE':>10} {'RMSE':>10}")
 
+# Store OOS R², MAE, and RMSE for each model-block combination
 metrics_rows = []
 for model in ["fe", "rf", "xgb"]:
     for block in ["b1", "b2", "b3"]:
@@ -195,6 +207,7 @@ print()
 print("H1: Diebold-Mariano test — FE vs ML (positive stat = ML is better)")
 print(f"{'Block':<6} {'Comparison':<15} {'DM stat':>8} {'p-value':>8}  sig")
 
+# Store DM test results comparing FE with each ML model
 h1_rows = []
 for block in ["B1", "B2", "B3"]:
     b = block.lower()
@@ -248,6 +261,7 @@ DM tests confirm whether the improvement is statistically significant.
 print("H2: Block 2 vs Block 1 — incremental value of liquidity features")
 print(f"{'Model':<6} {'OOS R² B1':>10} {'OOS R² B2':>10} {'Δ (B2−B1)':>10} {'DM stat':>8} {'p-value':>8}  sig")
 
+# Store liquidity increment results by comparing Block 2 against Block 1
 h2_rows = []
 for model in ["fe", "rf", "xgb"]:
     p1 = pred[f"pred_{model}_b1"].values
@@ -262,7 +276,7 @@ for model in ["fe", "rf", "xgb"]:
                     "delta": delta, "dm_stat": stat, "p_dm": pval})
 
 h2_df = pd.DataFrame(h2_rows)
-h2_df.to_csv("h2_results.csv", index=False)
+h2_df.to_csv("output/results/h2_results.csv", index=False)
 print("\nSaved: h2_results.csv")
 ```
 
@@ -328,7 +342,7 @@ axes[1].legend()
 axes[1].set_xticks([1, 2, 3, 4, 5])
 
 plt.tight_layout()
-plt.savefig("h2a_quintile_chart.png", dpi=150, bbox_inches="tight")
+plt.savefig("output/figures/h2a_quintile_chart.png", dpi=150, bbox_inches="tight")
 plt.show()
 print("Saved: h2a_quintile_chart.png")
 ```
@@ -369,6 +383,7 @@ against Block 3 (+ foreign buy/sell flow).
 print("H3: Block 3 vs Block 2 — incremental value of foreign flow features")
 print(f"{'Model':<6} {'OOS R² B2':>10} {'OOS R² B3':>10} {'Δ (B3−B2)':>10} {'DM stat':>8} {'p-value':>8}  sig")
 
+# Store foreign flow increment results by comparing Block 3 against Block 2
 h3_rows = []
 for model in ["fe", "rf", "xgb"]:
     p2 = pred[f"pred_{model}_b2"].values
@@ -383,7 +398,7 @@ for model in ["fe", "rf", "xgb"]:
                     "delta": delta, "dm_stat": stat, "p_dm": pval})
 
 h3_df = pd.DataFrame(h3_rows)
-h3_df.to_csv("h3_results.csv", index=False)
+h3_df.to_csv("output/results/h3_results.csv", index=False)
 print("\nSaved: h3_results.csv")
 ```
 
@@ -438,7 +453,7 @@ for ax, (model_name, shap_data) in zip(axes, [("RF", shap_rf), ("XGB", shap_xgb)
     print(f"Sell/buy ratio: {sell_shap/buy_shap:.2f}x  →  {verdict}")
 
     # Save per-model importance CSV
-    global_imp.to_csv(f"h3a_shap_importance_{model_name.lower()}.csv", index=False)
+    global_imp.to_csv(f"output/results/h3a_shap_importance_{model_name.lower()}.csv", index=False)
 
     # Bar chart (block color-coded)
     features_ord = global_imp["feature"].tolist()
@@ -452,7 +467,7 @@ for ax, (model_name, shap_data) in zip(axes, [("RF", shap_rf), ("XGB", shap_xgb)
     ax.legend(handles=LEGEND_ELEMENTS, loc="lower right")
 
 plt.tight_layout()
-plt.savefig("h3a_global_shap.png", dpi=150, bbox_inches="tight")
+plt.savefig("output/figures/h3a_global_shap.png", dpi=150, bbox_inches="tight")
 plt.show()
 
 # Expose RF values as top-level variables for use in the summary cell (RF is primary model)
@@ -505,6 +520,89 @@ print(f"\nSaved: h3a_global_shap.png | h3a_shap_importance_rf.csv | h3a_shap_imp
 
     
     Saved: h3a_global_shap.png | h3a_shap_importance_rf.csv | h3a_shap_importance_xgb.csv
+
+
+## 4.7a H3a Signed: Signed SHAP by Foreign Flow Quintile
+
+Mean *signed* SHAP values (not absolute) across foreign flow quintiles.
+Quintiles are formed within each week using the rank-normalized feature values
+that were passed to the model.
+
+
+```python
+print("H3a: Signed SHAP by foreign flow quintiles")
+
+# Load the rank-normalized foreign flow values that were used as model inputs
+# (model_ready.csv is not loaded earlier in this notebook)
+feature_values = pd.read_csv(
+    "output/intermediate/model_ready.csv",
+    usecols=["ticker", "date", "f_buy_5d", "f_sell_5d"]
+)
+feature_values["date"] = pd.to_datetime(feature_values["date"])
+
+def signed_shap_by_quintile(shap_df, model_name):
+    """
+    Compute average signed SHAP values across foreign flow quintiles.
+    Quintiles are formed within each week using the model-input flow ranks.
+    """
+
+    # Merge SHAP values with the corresponding foreign flow feature values
+    # suffixes: _shap = SHAP contribution, _value = actual rank-normalized input
+    tmp = shap_df.merge(
+        feature_values,
+        on=["ticker", "date"],
+        how="left",
+        suffixes=("_shap", "_value")
+    )
+    rows = []
+    # Repeat the same quintile calculation for foreign selling and foreign buying
+    for feature in ["f_sell_5d", "f_buy_5d"]:
+        value_col = feature + "_value"      # rank-normalized feature value
+        shap_col  = feature + "_shap"       # signed SHAP contribution (renamed by merge)
+        q_col     = feature + "_quintile"   # quintile label
+        # Form weekly quintiles based on the rank-normalized foreign flow value
+        tmp[q_col] = (
+            tmp.groupby("date")[value_col]
+            .transform(lambda x: pd.qcut(
+                x.rank(method="first"),
+                q=5,
+                labels=["Q1", "Q2", "Q3", "Q4", "Q5"]
+            ))
+        )
+        # Average signed SHAP values within each foreign flow quintile
+        q_means = tmp.groupby(q_col)[shap_col].mean()
+        # Store one result row for each feature and model
+        rows.append({
+            "model":   model_name,
+            "feature": feature,
+            "Q1": q_means.loc["Q1"],
+            "Q2": q_means.loc["Q2"],
+            "Q3": q_means.loc["Q3"],
+            "Q4": q_means.loc["Q4"],
+            "Q5": q_means.loc["Q5"],
+        })
+    return pd.DataFrame(rows)
+
+# Apply the signed SHAP quintile calculation to both RF and XGB
+h3a_signed = pd.concat([
+    signed_shap_by_quintile(shap_rf,  "RF"),
+    signed_shap_by_quintile(shap_xgb, "XGB")
+], ignore_index=True)
+
+# Save the table used for the H3a signed SHAP interpretation
+h3a_signed.to_csv("output/results/h3a_signed_shap_quintiles.csv", index=False)
+print(h3a_signed.round(6).to_string(index=False))
+print("\nSaved: output/results/h3a_signed_shap_quintiles.csv")
+```
+
+    H3a: Signed SHAP by foreign flow quintiles
+    model   feature       Q1        Q2        Q3        Q4        Q5
+       RF f_sell_5d 0.000811 -0.000094 -0.000186 -0.000183 -0.000177
+       RF  f_buy_5d 0.000073 -0.000008 -0.000007 -0.000010 -0.000064
+      XGB f_sell_5d 0.001117 -0.000264 -0.000290 -0.000275 -0.000232
+      XGB  f_buy_5d 0.000163 -0.000003  0.000009 -0.000004 -0.000325
+    
+    Saved: output/results/h3a_signed_shap_quintiles.csv
 
 
 ## 4.8 H4: Regime Dependence of the ML Advantage
@@ -570,7 +668,7 @@ axes[1].set_title("H4: ML Advantage over FE by Regime")
 axes[1].legend()
 
 plt.tight_layout()
-plt.savefig("h4_regime_chart.png", dpi=150, bbox_inches="tight")
+plt.savefig("output/figures/h4_regime_chart.png", dpi=150, bbox_inches="tight")
 plt.show()
 print("Saved: h4_regime_chart.png")
 ```
@@ -591,7 +689,7 @@ print("Saved: h4_regime_chart.png")
 
 
     
-![png](04_evaluation_files/04_evaluation_17_1.png)
+![png](04_evaluation_files/04_evaluation_19_1.png)
     
 
 
@@ -611,17 +709,20 @@ stress, and other weeks separately. Second, mean absolute SHAP values for liquid
 ```python
 print("H4a Part 1: B2−B1 and B3−B2 OOS R² delta by regime")
 
+# Store regime-level OOS R² and block-to-block incremental gains
 h4a_rows = []
 
 # Use full OOS mean as benchmark — consistent with H4 (NB3) and full-sample OOS R²
 # actual is the full OOS actual array defined in section 4.1
 full_oos_mean = actual.mean()
 
+# Compute regime-specific OOS R² using the full OOS mean benchmark
 def r2_full_bench(act_sub, pred_vals):
     sse_m = np.sum((act_sub - pred_vals) ** 2)
     sse_b = np.sum((act_sub - full_oos_mean) ** 2)
     return 1 - sse_m / sse_b
 
+# Loop through each market regime and calculate block-level model performance
 for regime in ["calm", "stress", "other"]:
     sub = pred[pred["regime"] == regime]
     act = sub["actual"].values
@@ -638,7 +739,7 @@ for regime in ["calm", "stress", "other"]:
         })
 
 h4a_df = pd.DataFrame(h4a_rows)
-h4a_df.to_csv("h4a_block_regime_results.csv", index=False)
+h4a_df.to_csv("output/results/h4a_block_regime_results.csv", index=False)
 
 # Show XGB pivot (clearest story)
 pivot_xgb = h4a_df[h4a_df["model"] == "XGB"][["regime", "oos_r2_b1", "oos_r2_b2", "oos_r2_b3", "delta_b2_b1", "delta_b3_b2"]]
@@ -698,7 +799,7 @@ for model_name, shap_data in [("RF", shap_rf), ("XGB", shap_xgb)]:
             rows.append({"regime": regime, "feature": feat,
                          "mean_abs_shap": sub[feat].abs().mean()})
     df_model = pd.DataFrame(rows)
-    df_model.to_csv(f"h4a_shap_regime_{model_name.lower()}.csv", index=False)
+    df_model.to_csv(f"output/results/h4a_shap_regime_{model_name.lower()}.csv", index=False)
     regime_shap_all[model_name] = df_model
 
     print(f"\n--- {model_name} Block 3 ---")
@@ -733,7 +834,7 @@ for row_idx, (model_name, shap_df_model) in enumerate([("RF", regime_shap_all["R
 
 plt.suptitle("H4a: Feature Importance by Market Regime (RF and XGB Block 3)", y=1.01)
 plt.tight_layout()
-plt.savefig("h4a_shap_by_regime.png", dpi=150, bbox_inches="tight")
+plt.savefig("output/figures/h4a_shap_by_regime.png", dpi=150, bbox_inches="tight")
 plt.show()
 
 print("\nSaved: h4a_shap_by_regime.png | h4a_shap_regime_rf.csv | h4a_shap_regime_xgb.csv")
@@ -754,7 +855,7 @@ print("\nSaved: h4a_shap_by_regime.png | h4a_shap_regime_rf.csv | h4a_shap_regim
 
 
     
-![png](04_evaluation_files/04_evaluation_20_1.png)
+![png](04_evaluation_files/04_evaluation_22_1.png)
     
 
 
@@ -893,7 +994,7 @@ summary_rows = [
      "key_result": "Stress-regime liquidity and foreign-flow contributions are not consistently stronger than calm-regime contributions"},
 ]
 
-pd.DataFrame(summary_rows).to_csv("summary_table.csv", index=False)
+pd.DataFrame(summary_rows).to_csv("output/results/summary_table.csv", index=False)
 print("\nSaved: summary_table.csv")
 ```
 

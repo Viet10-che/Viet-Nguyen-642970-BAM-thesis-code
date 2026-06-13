@@ -30,7 +30,7 @@ Load the model-ready weekly panel produced by Notebook 2.
 
 ```python
 # Weekly panel produced by notebook 2 — one row per (ticker, week)
-df = pd.read_csv("model_ready.csv")
+df = pd.read_csv("output/intermediate/model_ready.csv")
 df["date"] = pd.to_datetime(df["date"])
 df = df.sort_values(["ticker", "date"]).reset_index(drop=True)
 
@@ -111,6 +111,7 @@ All functions return a DataFrame with columns `[ticker, date, actual, prediction
 
 
 ```python
+# Fit Fixed Effects model and return predictions for one test week
 def fit_predict_fe(train_df, test_df, features, target):
     """
     Fixed Effects via LSDV (Least Squares Dummy Variables).
@@ -161,6 +162,8 @@ def fit_predict_fe(train_df, test_df, features, target):
     out["prediction"] = pred.values
     return out
 
+
+# Fit Random Forest model and return predictions for one test week
 def fit_predict_rf(train_df, test_df, features, target, params):
     """Random Forest for one test week."""
     model = RandomForestRegressor(**params, n_jobs=-1)
@@ -172,6 +175,7 @@ def fit_predict_rf(train_df, test_df, features, target, params):
     return out
 
 
+# Fit XGBoost model and return predictions for one test week
 def fit_predict_xgb(train_df, test_df, features, target, params):
     """XGBoost for one test week."""
     model = XGBRegressor(objective="reg:squarederror", n_jobs=-1, **params)
@@ -183,6 +187,7 @@ def fit_predict_xgb(train_df, test_df, features, target, params):
     return out
 
 
+# Run expanding-window forecasting across all OOS weeks
 def run_expanding_window(df, oos_dates, model_name, features, target, params=None):
     """
     At each OOS week t: train on everything before t, predict t.
@@ -213,6 +218,8 @@ CALM_END     = "2019-12-31"
 STRESS_START = "2022-01-01"
 STRESS_END   = "2023-12-31"
 
+
+# Assign each week to calm, stress, or other market regime
 def assign_regime(date_series):
     """
     Label weeks by market regime using VNIndex volatility periods (defined in section 3.9).
@@ -225,13 +232,10 @@ def assign_regime(date_series):
     regime[(date_series >= STRESS_START) & (date_series <= STRESS_END)] = "stress"
     return regime
 
-
-print("Helper functions defined: fit_predict_fe, fit_predict_rf, fit_predict_xgb")
-print("                          run_expanding_window, assign_regime")
+print("Helper functions defined: fit_predict_fe, fit_predict_rf, fit_predict_xgb, run_expanding_window, assign_regime")
 ```
 
-    Helper functions defined: fit_predict_fe, fit_predict_rf, fit_predict_xgb
-                              run_expanding_window, assign_regime
+    Helper functions defined: fit_predict_fe, fit_predict_rf, fit_predict_xgb, run_expanding_window, assign_regime
 
 
 ## 3.4 Hyperparameter Tuning (Development Sample)
@@ -274,6 +278,7 @@ print(f"Validation rows: {(test_fold >= 0).sum():,} | always-train rows: {(test_
 
 
 ```python
+# Grid search for Random Forest using time-ordered CV
 # Grid is intentionally small as development sample only has ~96 weeks,
 # so a large grid risks overfitting the tuning set.
 rf_param_grid = {
@@ -316,7 +321,7 @@ for block_name, features in feature_sets.items():
     )
 
 rf_results_df = pd.concat(rf_results).sort_values(["block", "cv_mse"]).reset_index(drop=True)
-rf_results_df.to_csv("rf_tuning_results.csv", index=False)
+rf_results_df.to_csv("output/results/rf_tuning_results.csv", index=False)
 print("\nFINAL RF PARAMETERS")
 for k, v in best_rf_params.items(): print(f"  {k}: {v}")
 ```
@@ -383,7 +388,7 @@ for block_name, features in feature_sets.items():
     )
 
 xgb_results_df = pd.concat(xgb_results).sort_values(["block", "cv_mse"]).reset_index(drop=True)
-xgb_results_df.to_csv("xgb_tuning_results.csv", index=False)
+xgb_results_df.to_csv("output/results/xgb_tuning_results.csv", index=False)
 print("\nFINAL XGB PARAMETERS")
 for k, v in best_xgb_params.items(): print(f"  {k}: {v}")
 ```
@@ -439,7 +444,7 @@ for name, pred_df in [
     ("pred_rf_b1",  pred_rf_b1),  ("pred_rf_b2",  pred_rf_b2),  ("pred_rf_b3",  pred_rf_b3),
     ("pred_xgb_b1", pred_xgb_b1), ("pred_xgb_b2", pred_xgb_b2), ("pred_xgb_b3", pred_xgb_b3),
 ]:
-    pred_df.to_csv(f"{name}.csv", index=False)
+    pred_df.to_csv(f"output/results/{name}.csv", index=False)
 print("\nAll 9 prediction files saved.")
 ```
 
@@ -478,7 +483,7 @@ for pred_df, col in [
     )
 
 predictions = predictions.sort_values(["ticker", "date"]).reset_index(drop=True)
-predictions.to_csv("predictions.csv", index=False)
+predictions.to_csv("output/intermediate/predictions.csv", index=False)
 
 print("predictions shape:", predictions.shape)
 print("columns:", predictions.columns.tolist())
@@ -657,14 +662,14 @@ for q in [1, 2, 3, 4, 5]:
         print(f"    {model.upper()} done")
 
 h2a_results_df = pd.DataFrame(h2a_results)
-h2a_results_df.to_csv("h2a_results.csv", index=False)
+h2a_results_df.to_csv("output/intermediate/h2a_results.csv", index=False)
 
 # Incremental effect of liquidity (Block 2 vs Block 1)
 b1_df = h2a_results_df[h2a_results_df["block"] == "B1"]
 b2_df = h2a_results_df[h2a_results_df["block"] == "B2"]
 h2a_compare = b1_df.merge(b2_df, on=["quintile", "model"], suffixes=("_b1", "_b2"))
 h2a_compare["delta_oos_r2"] = h2a_compare["oos_r2_b2"] - h2a_compare["oos_r2_b1"]
-h2a_compare.to_csv("h2a_compare.csv", index=False)
+h2a_compare.to_csv("output/intermediate/h2a_compare.csv", index=False)
 
 print("\nIncremental gain B2-B1 (OOS R²):")
 print(h2a_compare[["quintile", "model", "delta_oos_r2"]].to_string(index=False))
@@ -746,7 +751,7 @@ Regime labels are attached to `predictions` and saved for use in Notebook 4.
 
 ```python
 # Compute 20-day rolling volatility as a proxy for market stress
-df_vnx = pd.read_csv("vnindex_clean.csv")
+df_vnx = pd.read_csv("output/intermediate/vnindex_clean.csv")
 df_vnx["date"] = pd.to_datetime(df_vnx["date"])
 df_vnx = df_vnx.sort_values("date")
 df_vnx = df_vnx[(df_vnx["date"] >= "2016-01-01") & (df_vnx["date"] <= "2025-12-31")]
@@ -779,7 +784,7 @@ ax.set_xlabel("Date")
 ax.set_ylabel("Volatility (log-return std)")
 ax.legend()
 plt.tight_layout()
-plt.savefig("regime_volatility.png", dpi=150)
+plt.savefig("output/figures/regime_volatility.png", dpi=150)
 plt.show()
 
 predictions["regime"] = assign_regime(predictions["date"])
@@ -793,7 +798,7 @@ regime_labels = (
     .sort_values("date")
     .reset_index(drop=True)
 )
-regime_labels.to_csv("regime_labels.csv", index=False)
+regime_labels.to_csv("output/intermediate/regime_labels.csv", index=False)
 print("Saved: regime_labels.csv")
 ```
 
@@ -872,13 +877,13 @@ for regime in ["calm", "stress", "other"]:
         print(f"  {model_name}: OOS R\u00b2 = {r2:.4f}")
 
 h4_df = pd.DataFrame(h4_results)
-h4_df.to_csv("h4_regime_results.csv", index=False)
+h4_df.to_csv("output/intermediate/h4_regime_results.csv", index=False)
 
 # ML advantage = (RF or XGB OOS R²) minus (FE OOS R²) within the same regime
 fe_r2 = h4_df[h4_df["model"] == "FE"][["regime", "oos_r2"]].rename(columns={"oos_r2": "fe_r2"})
 h4_adv = h4_df[h4_df["model"] != "FE"].merge(fe_r2, on="regime")
 h4_adv["ml_advantage"] = h4_adv["oos_r2"] - h4_adv["fe_r2"]
-h4_adv.to_csv("h4_regime_advantage.csv", index=False)
+h4_adv.to_csv("output/intermediate/h4_regime_advantage.csv", index=False)
 
 print("\nML advantage over FE (OOS R\u00b2 gap) by regime:")
 print(h4_adv[["regime", "model", "oos_r2", "fe_r2", "ml_advantage"]].to_string(index=False))
@@ -961,7 +966,7 @@ shap_xgb_b3 = pd.concat(all_shap, ignore_index=True)
 
 # Attach regime so notebook 4 can compare feature importance across calm vs stress
 shap_xgb_b3["regime"] = assign_regime(shap_xgb_b3["date"])
-shap_xgb_b3.to_csv("shap_xgb_b3.csv", index=False)
+shap_xgb_b3.to_csv("output/intermediate/shap_xgb_b3.csv", index=False)
 
 print(f"\nSHAP table shape: {shap_xgb_b3.shape}")
 print("Saved: shap_xgb_b3.csv")
@@ -1021,7 +1026,7 @@ shap_rf_b3 = pd.concat(all_shap_rf, ignore_index=True)
 
 # Attach regime so notebook 4 can compare feature importance across calm vs stress
 shap_rf_b3["regime"] = assign_regime(shap_rf_b3["date"])
-shap_rf_b3.to_csv("shap_rf_b3.csv", index=False)
+shap_rf_b3.to_csv("output/intermediate/shap_rf_b3.csv", index=False)
 
 print(f"\nSHAP table shape: {shap_rf_b3.shape}")
 print("Saved: shap_rf_b3.csv")

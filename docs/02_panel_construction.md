@@ -25,7 +25,7 @@ date. Observations with missing target are dropped at this stage.
 
 ```python
 # 2.1.1 Load and restrict sample window
-df = pd.read_csv("features_panel.csv")
+df = pd.read_csv("output/intermediate/features_panel.csv")
 df["date"] = pd.to_datetime(df["date"])
 
 df = df[
@@ -175,6 +175,11 @@ df_model[cols_to_winsorize] = df_model.groupby("date")[cols_to_winsorize].transf
     lambda x: x.clip(lower=x.quantile(0.01), upper=x.quantile(0.99))
 )
 
+# Save descriptive_ready for Notebook 5
+# Post-winsorization, pre-rank-normalization: preserves original scale for descriptive statistics
+df_model.to_csv("output/intermediate/descriptive_ready.csv", index=False)
+print("Saved: output/intermediate/descriptive_ready.csv")
+
 # Cross-sectional rank normalization of features only (not target)
 # Following Gu et al. (2020): transform each feature to [-0.5, 0.5] within each week
 # Target (target_5d_mktadj) is retained in its original scale to preserve economic meaning
@@ -193,6 +198,7 @@ print("Feature range after normalization (expected near [-0.5, 0.5]):")
 print(df_model[block3_features].agg(["min", "max"]).round(4).to_string())
 ```
 
+    Saved: output/intermediate/descriptive_ready.csv
     Winsorization + rank normalization applied.
     Target range after winsorization: -0.3761 -> 0.2984
     Feature range after normalization (expected near [-0.5, 0.5]):
@@ -204,10 +210,10 @@ print(df_model[block3_features].agg(["min", "max"]).round(4).to_string())
 
 ```python
 # 2.2.6 Save and validation
-df_model.to_csv("model_ready.csv", index=False)
+df_model.to_csv("output/intermediate/model_ready.csv", index=False)
 
 if len(dropped_weeks) > 0:
-    dropped_weeks.to_csv("dropped_weeks_log.csv", index=False)
+    dropped_weeks.to_csv("output/intermediate/dropped_weeks_log.csv", index=False)
 
 dev = df_model[df_model["sample_period"] == "development"]
 oos = df_model[df_model["sample_period"] == "oos"]
@@ -276,11 +282,11 @@ print("=" * 65)
 ERRORS = []
 
 # ── 0. reload all files fresh ────────────────────────────────
-raw   = pd.read_csv("features_panel.csv",  parse_dates=["date"])
-ready = pd.read_csv("model_ready.csv",     parse_dates=["date"])
+raw   = pd.read_csv("output/intermediate/features_panel.csv",  parse_dates=["date"])
+ready = pd.read_csv("output/intermediate/model_ready.csv",     parse_dates=["date"])
 
 PRICE_FILE   = "Dataset/sheet_final_raw.csv"
-FLOW_FILE    = "Dataset/cafef_foreignflow_222tickers_2014_2026_FIXED.csv"
+FLOW_FILE    = "Dataset/cafef_foreignflow_222tickers_2014_2026.csv"
 VNINDEX_FILE = "Dataset/VNindex_raw.csv"
 
 # ── 1. all dates are ISO-week origins ────────────────────────
@@ -367,7 +373,7 @@ else:
 # ── 6. dropped weeks do not appear in model_ready ────────────
 print(f"\n[6] Dropped weeks log spot-check ...")
 try:
-    dropped = pd.read_csv("dropped_weeks_log.csv", parse_dates=["date"])
+    dropped = pd.read_csv("output/intermediate/dropped_weeks_log.csv", parse_dates=["date"])
     overlap = set(dropped["date"]) & set(ready["date"])
     if overlap:
         ERRORS.append(f"[6] {len(overlap)} dropped weeks still in model_ready")
@@ -536,7 +542,7 @@ try:
     vn_raw["close"] = vn_raw["price_str"].str.replace(",", ".").astype(float)
     vn_raw = vn_raw.dropna(subset=["date", "close"])
 
-    vn_clean  = pd.read_csv("vnindex_clean.csv", parse_dates=["date"])
+    vn_clean  = pd.read_csv("output/intermediate/vnindex_clean.csv", parse_dates=["date"])
     vn_sample = vn_clean.sample(min(15, len(vn_clean)), random_state=7)
     vn_errors = []
     for _, r in vn_sample.iterrows():
