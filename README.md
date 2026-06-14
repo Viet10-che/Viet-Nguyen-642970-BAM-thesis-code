@@ -48,7 +48,7 @@ Notebooks 02 to 06 do not require these raw files and can be run using the inter
 
 ## Output Structure
 
-The output folder contains three subfolders. The **intermediate** subfolder holds files passed between notebooks and is repopulated on each run. The **results** subfolder holds the final CSVs and tables reported in the thesis. The **figures** subfolder holds all charts and figures.
+The output folder contains three subfolders. The **intermediate** subfolder holds files passed between notebooks and is repopulated on each run. The **results** subfolder holds the final CSVs reported in the thesis. The **figures** subfolder holds all charts and figures.
 
 ## Requirements
 
