@@ -20,7 +20,7 @@ Three raw input files are required inside the **Dataset** folder.
 
 **cafef_foreignflow_222tickers_2014_2026.csv** contains weekly foreign buy and sell volume for each stock, scraped from CafeF.
 
-Notebooks 02 to 06 do not require these raw files and can be run using the intermediate outputs already saved in the output folder.
+Notebooks 03 to 06 do not require these raw files and can be run using the intermediate outputs already saved in the output folder.
 
 ## Notebooks
 
