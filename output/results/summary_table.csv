@@ -1,8 +1,0 @@
-hypothesis,test,verdict,key_result
-H1,"DM tests: FE vs RF/XGB, Block 3",accepted,RF and XGB significantly outperform FE in Block 3
-H2,DM tests: Block 2 vs Block 1,rejected,Liquidity variables do not significantly improve OOS performance
-H2a,B2−B1 OOS R² delta across liquidity quintiles,rejected,Liquidity gains are not monotonic across illiquidity quintiles
-H3,DM tests: Block 3 vs Block 2,rejected,Foreign flow variables do not provide incremental OOS power
-H3a,Mean absolute SHAP: foreign sell vs foreign buy (RF and XGB),accepted,RF sell/buy ratio=5.49x; XGB sell/buy ratio=2.58x
-H4,ML advantage over FE in calm vs stress regimes,accepted,ML advantage is smaller during stress than during calm periods
-H4a,Regime-specific OOS deltas and SHAP importance (RF and XGB),partially supported / mixed evidence,Stress-regime liquidity and foreign-flow contributions are not consistently stronger than calm-regime contributions
