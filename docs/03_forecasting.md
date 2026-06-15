@@ -922,7 +922,7 @@ print("\nSaved: h4_regime_results.csv, h4_regime_advantage.csv")
 
 ## 3.11 SHAP Analysis (XGB Block 3)
 
-Block 3 is used rather than B1 or B2 because it contains the full feature set across all three groups (baseline, liquidity, foreign flow), which is needed to analyze feature contributions for H3a and H4a. Among the Block 3 models, XGB achieves the best OOS R² (XGB: -0.0010, RF: -0.0018, FE: -0.0104), so it is selected for S analysis.
+Block 3 is used rather than B1 or B2 because it contains the full feature set across all three groups (baseline, liquidity, foreign flow), which is needed to analyze feature contributions for H3a and H4a.
 
 The expanding window is re-run here to obtain fitted model objects at each OOS week. SHAP values are computed using TreeExplainer, which gives exact Shapley values for tree-based models. Regime labels are attached to the output so that Notebook 4 can compare feature importance across calm and stress periods.
 

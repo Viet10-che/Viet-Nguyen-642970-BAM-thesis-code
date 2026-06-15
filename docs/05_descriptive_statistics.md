@@ -1,17 +1,11 @@
 # Notebook 5: Sample Description and Descriptive Statistics
 
 **Input:** `output/intermediate/descriptive_ready.csv` (saved by NB2 — post-winsorization, pre-rank-normalization)  
-**Output:** `output/results/descriptive_ready.csv`, `desc_summary_stats.csv`, `desc_table.tex`
+**Output:** `output/results/descriptive_ready.csv`, `desc_summary_stats.csv`
 
-**Pipeline:**
-```
-descriptive_ready.csv  (from NB2: winsorized, pre-rank-norm, original scale)
-  → return vars  *= 100   (convert to %, reporting only)
-  → f_buy_5d     *= 1e6   (unit correction, reporting only)
-  → f_sell_5d    *= 1e6   (unit correction, reporting only)
-  → amihud_5d    *= 1e6   (readability scaling)
-  → save to output/results/ → compute tables
-```
+**Purpose:** prepare the post-winsorization, pre-rank-normalization panel for descriptive reporting.
+Returns are converted to percentages, while foreign flows and Amihud illiquidity are rescaled for readability.
+
 
 
 ```
@@ -53,8 +47,7 @@ print("Sample periods:", desc_df["sample_period"].value_counts().to_dict())
 **f_buy_5d, f_sell_5d × 10⁶:** corrects unit difference between CaFeF (billions VND) and Datastream (thousands VND).  
 **amihud_5d × 10⁶:** raw values ~10⁻¹⁰ to 10⁻⁵, scaling for readability.
 
-Applied after winsorization (done in NB2) so outliers are already clipped.  
-Does NOT affect model results — rank normalization preserves ordering.
+Applied after winsorization (done in NB2) so outliers are already clipped.
 
 
 ```
@@ -213,133 +206,4 @@ print("\nSaved: desc_summary_stats.csv")
     Block 3  Foreign sell flow (×10⁶)                   mean=   0.1632  std=   1.8788  p10=   0.0000  p50=   0.0304  p90=   0.3069  [83.0% non-zero]
     
     Saved: desc_summary_stats.csv
-
-
-## 5.6 Export LaTeX Table
-
-Requires `\usepackage{booktabs}` in LaTeX preamble.
-
-
-```
-def fmt(x, decimals=2):
-    if pd.isna(x) or x is None:
-        return ""
-    return f"{x:.{decimals}f}"
-
-def fmt4(x):
-    return fmt(x, 4)
-
-# Return rows use 2 decimal places; others use 4
-RETURN_LABELS = {LABEL_MAP[c] for c in RETURN_COLS}
-
-lines = []
-lines.append(r"\begin{table}[ht]")
-lines.append(r"\centering")
-lines.append(r"\small")
-lines.append(r"\caption{Sample Description and Summary Statistics}")
-lines.append(r"\label{tab:descriptive}")
-
-# Panel A
-lines.append(r"\vspace{0.5em}")
-lines.append(r"\textbf{Panel A: Sample Structure}")
-lines.append(r"\vspace{0.3em}")
-lines.append(r"\begin{tabular}{lrrrr}")
-lines.append(r"\toprule")
-lines.append(r"Period & Date range & Weeks & Obs. & Avg tickers/week \\")
-lines.append(r"\midrule")
-for _, row in panel_a.iterrows():
-    lines.append(
-        f"{row['Period']} & {row['Date range']} & "
-        f"{int(row['Weeks']):,} & {int(row['Observations']):,} & "
-        f"{row['Avg tickers/week']:.1f} \\\\"
-    )
-lines.append(r"\bottomrule")
-lines.append(r"\end{tabular}")
-
-# Panel B
-lines.append(r"\vspace{1em}")
-lines.append(r"\textbf{Panel B: Summary Statistics}")
-lines.append(r"\vspace{0.3em}")
-lines.append(r"\begin{tabular}{llrrrrrr}")
-lines.append(r"\toprule")
-lines.append(r"Block & Variable & Mean & Std & P10 & P50 & P90 & \% Non-zero \\")
-lines.append(r"\midrule")
-
-current_block = None
-for _, row in panel_b.iterrows():
-    block_label   = row["Block"] if row["Block"] != current_block else ""
-    current_block = row["Block"]
-    nz_str = f"{row['% Non-zero']:.1f}" if pd.notna(row["% Non-zero"]) else ""
-    f = fmt if row["Variable"] in RETURN_LABELS else fmt4
-    lines.append(
-        f"{block_label} & {row['Variable']} & "
-        f"{f(row['Mean'])} & {f(row['Std'])} & "
-        f"{f(row['P10'])} & {f(row['P50'])} & "
-        f"{f(row['P90'])} & {nz_str} \\\\"
-    )
-
-lines.append(r"\bottomrule")
-lines.append(r"\end{tabular}")
-
-# Note
-lines.append(r"\vspace{0.3em}")
-lines.append(
-    r"\begin{minipage}{\linewidth}"
-    r"\footnotesize \textit{Note.} "
-    r"Return variables are expressed as percentages. "
-    r"Amihud illiquidity and foreign flow variables are multiplied by $10^6$ for readability."
-    r"\end{minipage}"
-)
-lines.append(r"\end{table}")
-
-latex_str = "\n".join(lines)
-with open("output/results/desc_table.tex", "w") as f:
-    f.write(latex_str)
-
-print("Saved: desc_table.tex")
-print()
-print(latex_str)
-```
-
-    Saved: desc_table.tex
-    
-    \begin{table}[ht]
-    \centering
-    \small
-    \caption{Sample Description and Summary Statistics}
-    \label{tab:descriptive}
-    \vspace{0.5em}
-    \textbf{Panel A: Sample Structure}
-    \vspace{0.3em}
-    \begin{tabular}{lrrrr}
-    \toprule
-    Period & Date range & Weeks & Obs. & Avg tickers/week \\
-    \midrule
-    Development & Feb 2014 – Dec 2015 & 96 & 13,882 & 144.6 \\
-    OOS & Jan 2016 – Dec 2025 & 514 & 97,976 & 190.6 \\
-    Full sample & Feb 2014 – Dec 2025 & 610 & 111,858 & 183.4 \\
-    \bottomrule
-    \end{tabular}
-    \vspace{1em}
-    \textbf{Panel B: Summary Statistics}
-    \vspace{0.3em}
-    \begin{tabular}{llrrrrrr}
-    \toprule
-    Block & Variable & Mean & Std & P10 & P50 & P90 & \% Non-zero \\
-    \midrule
-    Target & 5-day mkt-adj return (%) & -0.03 & 4.93 & -5.37 & -0.30 & 5.81 &  \\
-    Block 1 & 1-day lagged return (%) & 0.06 & 2.30 & -2.37 & 0.00 & 2.77 &  \\
-     & 5-day lagged return (%) & 0.24 & 5.31 & -5.32 & 0.00 & 6.29 &  \\
-     & 1-month momentum (%) & 0.58 & 9.97 & -9.99 & 0.26 & 12.01 &  \\
-     & 1-month realized volatility (%) & 2.22 & 1.06 & 0.99 & 2.05 & 3.71 &  \\
-     & Log market capitalization & 15.1949 & 1.5643 & 13.4170 & 14.9344 & 17.5901 &  \\
-    Block 2 & 5-day avg turnover & 0.0072 & 0.0116 & 0.0002 & 0.0027 & 0.0197 &  \\
-     & Amihud illiquidity (×10⁶) & 0.2359 & 1.3599 & 0.0001 & 0.0019 & 0.1406 &  \\
-    Block 3 & Foreign buy flow (×10⁶) & 0.1782 & 4.1237 & 0.0000 & 0.0305 & 0.3330 & 84.4 \\
-     & Foreign sell flow (×10⁶) & 0.1632 & 1.8788 & 0.0000 & 0.0304 & 0.3069 & 83.0 \\
-    \bottomrule
-    \end{tabular}
-    \vspace{0.3em}
-    \begin{minipage}{\linewidth}\footnotesize \textit{Note.} Return variables are expressed as percentages. Amihud illiquidity and foreign flow variables are multiplied by $10^6$ for readability.\end{minipage}
-    \end{table}
 

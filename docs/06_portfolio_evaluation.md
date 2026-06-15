@@ -2,24 +2,15 @@
 
 **Input:** `output/intermediate/predictions.csv`, `output/intermediate/regime_labels.csv`
 
-**Output:**
-- `output/intermediate/portfolio_weekly_returns.csv`
-- `output/results/portfolio_results.csv`
-- `output/results/portfolio_regime_results.csv`
-- `output/figures/portfolio_cumret_long_only.png`
-- `output/figures/portfolio_cumret_spreads.png`
+**Output:** `output/intermediate/portfolio_weekly_returns.csv`, `output/results/portfolio_results.csv`, `output/results/portfolio_regime_results.csv`
 
-**Purpose:** Evaluate the economic meaning of model forecasts through portfolio sorting.
-The `actual` column is the five-day-ahead market-adjusted log return target (`target_5d_mktadj`).
-All portfolio returns are gross market-adjusted log returns; short-selling is not assumed.
-The long-short spread is reported as a ranking diagnostic.
+**Purpose:** evaluate the economic meaning of model forecasts by sorting stocks into predicted top and bottom quintiles.
+Portfolio returns are gross market-adjusted log returns, and the long-short spread is reported only as a ranking diagnostic.
 
 
 ```python
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
 import os
 
 PRED_PATH    = "output/intermediate/predictions.csv"
@@ -28,13 +19,9 @@ REGIME_PATH  = "output/intermediate/regime_labels.csv"
 OUT_WEEKLY   = "output/intermediate/portfolio_weekly_returns.csv"
 OUT_FULL     = "output/results/portfolio_results.csv"
 OUT_REGIME   = "output/results/portfolio_regime_results.csv"
-OUT_TABLE    = "output/results/portfolio_sorting_table_apa.tex"
-FIG_LONG     = "output/figures/portfolio_cumret_long_only.png"
-FIG_SPREAD   = "output/figures/portfolio_cumret_spreads.png"
 
 os.makedirs("output/intermediate", exist_ok=True)
 os.makedirs("output/results",      exist_ok=True)
-os.makedirs("output/figures",      exist_ok=True)
 
 PRED_COLS = [
     "pred_fe_b1",  "pred_fe_b2",  "pred_fe_b3",
@@ -236,132 +223,6 @@ print(full_results.head(10).round(4).to_string())
 
 
 ```python
-# APA-style table for thesis reporting
-model_order = [
-    "pred_fe_b1", "pred_fe_b2", "pred_fe_b3",
-    "pred_rf_b1", "pred_rf_b2", "pred_rf_b3",
-    "pred_xgb_b1", "pred_xgb_b2", "pred_xgb_b3",
-]
-
-model_label = {
-    "pred_fe_b1":  "FE B1",
-    "pred_fe_b2":  "FE B2",
-    "pred_fe_b3":  "FE B3",
-    "pred_rf_b1":  "RF B1",
-    "pred_rf_b2":  "RF B2",
-    "pred_rf_b3":  "RF B3",
-    "pred_xgb_b1": "XGB B1",
-    "pred_xgb_b2": "XGB B2",
-    "pred_xgb_b3": "XGB B3",
-}
-
-def get_metric(pred_col, series_name, metric):
-    return full_results.loc[
-        (full_results["pred_col"] == pred_col) &
-        (full_results["series_name"] == series_name),
-        metric
-    ].iloc[0]
-
-table_rows = []
-for col in model_order:
-    table_rows.append({
-        "model": model_label[col],
-        "top_mean": get_metric(col, "top_return", "ann_mean") * 100,
-        "ew_mean": get_metric(col, "equal_weight_return", "ann_mean") * 100,
-        "top_ew": get_metric(col, "top_minus_equal_weight", "ann_mean") * 100,
-        "excl_bottom_ew": get_metric(col, "exclude_bottom_minus_equal_weight", "ann_mean") * 100,
-        "long_short_mean": get_metric(col, "long_short_return", "ann_mean") * 100,
-        "long_short_sharpe": get_metric(col, "long_short_return", "sharpe"),
-    })
-
-portfolio_table = pd.DataFrame(table_rows)
-
-def fmt_pct(x):
-    return f"{x:.2f}"
-
-def fmt_num(x):
-    return f"{x:.2f}"
-
-lines = []
-lines.append(r"\begin{table}[H]")
-lines.append(r"\centering")
-lines.append(r"\small")
-lines.append(r"\caption{Portfolio Sorting Performance over the Full Out-of-Sample Period}")
-lines.append(r"\label{tab:portfolio_sorting}")
-lines.append(r"\begin{tabular}{lrrrrrr}")
-lines.append(r"\toprule")
-lines.append(r"Model & Top mean & EW mean & Top EW & Excl. bottom EW & Long short mean & Long short Sharpe \\")
-lines.append(r"\midrule")
-
-for _, row in portfolio_table.iterrows():
-    lines.append(
-        f"{row['model']} & "
-        f"{fmt_pct(row['top_mean'])} & "
-        f"{fmt_pct(row['ew_mean'])} & "
-        f"{fmt_pct(row['top_ew'])} & "
-        f"{fmt_pct(row['excl_bottom_ew'])} & "
-        f"{fmt_pct(row['long_short_mean'])} & "
-        f"{fmt_num(row['long_short_sharpe'])} \\\\"
-    )
-
-lines.append(r"\bottomrule")
-lines.append(r"\end{tabular}")
-lines.append(r"\vspace{0.5em}")
-lines.append(r"\begin{minipage}{0.95\textwidth}")
-lines.append(r"\footnotesize")
-lines.append(
-    r"\textit{Note.} Values are based on weekly five-day market-adjusted log returns. "
-    r"Mean returns are annualized and reported in percent. "
-    r"EW refers to the equal-weight benchmark across all stocks in the weekly prediction universe. "
-    r"Top EW is the annualized spread between the top-quintile portfolio and the equal-weight benchmark. "
-    r"Excl. bottom EW is the annualized spread between the portfolio that excludes the bottom quintile and the equal-weight benchmark. "
-    r"The long-short portfolio is reported as a ranking diagnostic."
-)
-lines.append(r"\end{minipage}")
-lines.append(r"\end{table}")
-
-latex_table = "\n".join(lines)
-
-with open(OUT_TABLE, "w") as f:
-    f.write(latex_table)
-
-print("Saved:", OUT_TABLE)
-print()
-print(latex_table)
-```
-
-    Saved: output/results/portfolio_sorting_table_apa.tex
-    
-    \begin{table}[H]
-    \centering
-    \small
-    \caption{Portfolio Sorting Performance over the Full Out-of-Sample Period}
-    \label{tab:portfolio_sorting}
-    \begin{tabular}{lrrrrrr}
-    \toprule
-    Model & Top mean & EW mean & Top EW & Excl. bottom EW & Long short mean & Long short Sharpe \\
-    \midrule
-    FE B1 & 1.54 & -3.54 & 5.08 & 1.97 & 13.04 & 0.90 \\
-    FE B2 & 1.08 & -3.54 & 4.62 & 2.26 & 13.77 & 0.98 \\
-    FE B3 & 1.03 & -3.54 & 4.58 & 2.07 & 12.98 & 0.93 \\
-    RF B1 & 4.69 & -3.54 & 8.24 & 2.97 & 20.31 & 1.47 \\
-    RF B2 & 4.28 & -3.54 & 7.83 & 3.07 & 20.29 & 1.38 \\
-    RF B3 & 4.31 & -3.54 & 7.85 & 2.95 & 19.78 & 1.43 \\
-    XGB B1 & 7.20 & -3.54 & 10.75 & 3.02 & 22.97 & 1.66 \\
-    XGB B2 & 7.43 & -3.54 & 10.97 & 3.62 & 25.66 & 1.88 \\
-    XGB B3 & 3.66 & -3.54 & 7.20 & 3.32 & 20.64 & 1.53 \\
-    \bottomrule
-    \end{tabular}
-    \vspace{0.5em}
-    \begin{minipage}{0.95\textwidth}
-    \footnotesize
-    \textit{Note.} Values are based on weekly five-day market-adjusted log returns. Mean returns are annualized and reported in percent. EW refers to the equal-weight benchmark across all stocks in the weekly prediction universe. Top EW is the annualized spread between the top-quintile portfolio and the equal-weight benchmark. Excl. bottom EW is the annualized spread between the portfolio that excludes the bottom quintile and the equal-weight benchmark. The long-short portfolio is reported as a ranking diagnostic.
-    \end{minipage}
-    \end{table}
-
-
-
-```python
 # Store portfolio performance results separately by market regime
 regime_rows = []
 
@@ -383,38 +244,48 @@ cols_order_r = ["regime", "pred_col", "series_name", "mean_weekly", "ann_mean",
 regime_results = regime_results[cols_order_r]
 regime_results.to_csv(OUT_REGIME, index=False)
 print("Saved:", OUT_REGIME)
-print(regime_results.head(10).round(4).to_string())
+print(regime_results.head(27).round(4).to_string())
 ```
 
     Saved: output/results/portfolio_regime_results.csv
-      regime    pred_col                        series_name  mean_weekly  ann_mean  weekly_vol  ann_vol  sharpe  hit_rate  max_drawdown  n_weeks
-    0   calm  pred_fe_b1                         top_return      -0.0012   -0.0622      0.0149   0.1071 -0.5810    0.4928       -0.3279      207
-    1   calm  pred_fe_b1                      bottom_return      -0.0025   -0.1290      0.0167   0.1207 -1.0695    0.4493       -0.4124      207
-    2   calm  pred_fe_b1              exclude_bottom_return      -0.0014   -0.0729      0.0128   0.0925 -0.7884    0.5121       -0.3092      207
-    3   calm  pred_fe_b1                equal_weight_return      -0.0016   -0.0841      0.0129   0.0928 -0.9058    0.4928       -0.3280      207
-    4   calm  pred_fe_b1                  long_short_return       0.0013    0.0668      0.0149   0.1072  0.6234    0.5314       -0.1213      207
-    5   calm  pred_fe_b1             top_minus_equal_weight       0.0004    0.0219      0.0079   0.0568  0.3849    0.5314       -0.0949      207
-    6   calm  pred_fe_b1  exclude_bottom_minus_equal_weight       0.0002    0.0112      0.0023   0.0166  0.6742    0.5169       -0.0183      207
-    7  other  pred_fe_b1                         top_return       0.0005    0.0267      0.0167   0.1202  0.2222    0.5049       -0.3015      204
-    8  other  pred_fe_b1                      bottom_return      -0.0016   -0.0850      0.0183   0.1316 -0.6458    0.4853       -0.4354      204
-    9  other  pred_fe_b1              exclude_bottom_return       0.0003    0.0149      0.0139   0.1003  0.1486    0.5196       -0.2914      204
+        regime    pred_col                        series_name  mean_weekly  ann_mean  weekly_vol  ann_vol  sharpe  hit_rate  max_drawdown  n_weeks
+    0     calm  pred_fe_b1                         top_return      -0.0012   -0.0622      0.0149   0.1071 -0.5810    0.4928       -0.3279      207
+    1     calm  pred_fe_b1                      bottom_return      -0.0025   -0.1290      0.0167   0.1207 -1.0695    0.4493       -0.4124      207
+    2     calm  pred_fe_b1              exclude_bottom_return      -0.0014   -0.0729      0.0128   0.0925 -0.7884    0.5121       -0.3092      207
+    3     calm  pred_fe_b1                equal_weight_return      -0.0016   -0.0841      0.0129   0.0928 -0.9058    0.4928       -0.3280      207
+    4     calm  pred_fe_b1                  long_short_return       0.0013    0.0668      0.0149   0.1072  0.6234    0.5314       -0.1213      207
+    5     calm  pred_fe_b1             top_minus_equal_weight       0.0004    0.0219      0.0079   0.0568  0.3849    0.5314       -0.0949      207
+    6     calm  pred_fe_b1  exclude_bottom_minus_equal_weight       0.0002    0.0112      0.0023   0.0166  0.6742    0.5169       -0.0183      207
+    7    other  pred_fe_b1                         top_return       0.0005    0.0267      0.0167   0.1202  0.2222    0.5049       -0.3015      204
+    8    other  pred_fe_b1                      bottom_return      -0.0016   -0.0850      0.0183   0.1316 -0.6458    0.4853       -0.4354      204
+    9    other  pred_fe_b1              exclude_bottom_return       0.0003    0.0149      0.0139   0.1003  0.1486    0.5196       -0.2914      204
+    10   other  pred_fe_b1                equal_weight_return      -0.0001   -0.0049      0.0141   0.1016 -0.0481    0.4902       -0.3201      204
+    11   other  pred_fe_b1                  long_short_return       0.0021    0.1117      0.0169   0.1219  0.9162    0.6029       -0.1710      204
+    12   other  pred_fe_b1             top_minus_equal_weight       0.0006    0.0316      0.0093   0.0668  0.4726    0.5441       -0.1281      204
+    13   other  pred_fe_b1  exclude_bottom_minus_equal_weight       0.0004    0.0198      0.0024   0.0171  1.1613    0.6275       -0.0186      204
+    14  stress  pred_fe_b1                         top_return       0.0029    0.1488      0.0161   0.1161  1.2818    0.6117       -0.1194      103
+    15  stress  pred_fe_b1                      bottom_return      -0.0028   -0.1463      0.0325   0.2343 -0.6245    0.5437       -0.4553      103
+    16  stress  pred_fe_b1              exclude_bottom_return       0.0007    0.0383      0.0148   0.1070  0.3580    0.5922       -0.1857      103
+    17  stress  pred_fe_b1                equal_weight_return       0.0000    0.0018      0.0175   0.1265  0.0146    0.5728       -0.2480      103
+    18  stress  pred_fe_b1                  long_short_return       0.0057    0.2951      0.0318   0.2290  1.2888    0.5146       -0.1790      103
+    19  stress  pred_fe_b1             top_minus_equal_weight       0.0028    0.1469      0.0153   0.1101  1.3342    0.5146       -0.0796      103
+    20  stress  pred_fe_b1  exclude_bottom_minus_equal_weight       0.0007    0.0365      0.0044   0.0316  1.1544    0.5631       -0.0279      103
+    21    calm  pred_fe_b2                         top_return      -0.0015   -0.0756      0.0145   0.1049 -0.7210    0.5217       -0.3496      207
+    22    calm  pred_fe_b2                      bottom_return      -0.0030   -0.1538      0.0167   0.1205 -1.2763    0.4348       -0.4708      207
+    23    calm  pred_fe_b2              exclude_bottom_return      -0.0013   -0.0668      0.0128   0.0921 -0.7254    0.5169       -0.3061      207
+    24    calm  pred_fe_b2                equal_weight_return      -0.0016   -0.0841      0.0129   0.0928 -0.9058    0.4928       -0.3280      207
+    25    calm  pred_fe_b2                  long_short_return       0.0015    0.0782      0.0139   0.1004  0.7794    0.5459       -0.1248      207
+    26    calm  pred_fe_b2             top_minus_equal_weight       0.0002    0.0085      0.0077   0.0556  0.1524    0.5266       -0.1090      207
 
 
 
 ```python
-print("Validation Summary")
-print(f"Prediction panel shape       : {df.shape}")
-print(f"OOS weeks                    : {df['date'].nunique()}")
-print(f"Model-block combinations     : {len(PRED_COLS)}")
-print()
-print("portfolio_weekly_returns (first 5 rows)")
-print(pd.read_csv(OUT_WEEKLY).head().to_string())
-print()
-print("portfolio_results (first 5 rows)")
-print(pd.read_csv(OUT_FULL).head().round(4).to_string())
-print()
-print("portfolio_regime_results (first 5 rows)")
-print(pd.read_csv(OUT_REGIME).head().round(4).to_string())
+print("Validation summary")
+print(f"Weekly portfolio returns: {weekly.shape}")
+print(f"Full performance results: {full_results.shape}")
+print(f"Regime performance results: {regime_results.shape}")
+print(f"OOS weeks: {weekly['date'].nunique()}")
+print(f"Model-block combinations: {weekly['pred_col'].nunique()}")
 ```
 
     Validation Summary
