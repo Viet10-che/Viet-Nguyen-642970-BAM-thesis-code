@@ -4,7 +4,9 @@ This repository contains the full replication code for the BAM thesis by Viet Ng
 
 ## How to Run
 
-Run notebooks 01 to 06 in order. Each notebook reads from the outputs of the previous one. Notebooks 02 to 06 can be run without the licensed datasets as long as the intermediate files in the output folder are present. The figure scripts 07 to 11 can be run independently once the relevant intermediate outputs are available.
+Run notebooks 01 to 06 in order. Each notebook reads from the outputs of the previous one. Notebooks 03 to 06 can be run without the licensed datasets as long as the intermediate files in the output folder are present. The figure scripts 07 to 11 can be run independently once the relevant intermediate outputs are available.
+
+To reproduce the full pipeline, contact the author at 642970bn@student.eur.nl to obtain the licensed datasets and intermediate files required to run Notebook 01 onwards.
 
 All output files are automatically saved in the output folder.
 
